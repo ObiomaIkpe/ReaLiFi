@@ -4,10 +4,6 @@
 
 **ReaLiFi** is a comprehensive Solidity smart contract for a decentralized real estate marketplace built on Hedera. It enables sellers to tokenize real estate assets as NFTs (ERC-721), fractionalize them into ERC-20 tokens for shared ownership, trade shares on a secondary market, and handle all payments in USDC. The contract includes robust security features, admin controls, dividend distribution capabilities, and a complete share trading ecosystem.
 
-**Version:** Solidity ^0.8.28  
-**Author:** Therock Ani  
-**License:** UNLICENSED
-
 ---
 
 ## Table of Contents
@@ -986,8 +982,6 @@ await contract.distributeFractionalDividends(tokenId,
     ethers.utils.parseUnits("5000", 6)
 );
 ```
-
----
 
 #### `setBuyerCanWithdraw(uint256 tokenId, bool canWithdraw)`
 
