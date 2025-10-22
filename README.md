@@ -766,9 +766,8 @@ We welcome contributions! Please follow these guidelines:
 
 **Author**: Therock Ani
 
-- **GitHub**: [@rocknwa](https://github.com/rocknwa)
-- **Email**: anitherock44@gmail.com
-- **Twitter**: [@ani_therock](https://twitter.com/ani_therock)
+- **GitHub**: [@techscorpion1](https://github.com/techscorpion1)
+- **Email**: techscorpion4@gmail.com
 
 ## Acknowledgments
 
