@@ -1,8 +1,8 @@
- # ReaLiFi Smart Contract Documentation
+    # ReaLiFi Smart Contract Documentation
 
 ## Overview
 
-**ReaLiFi** is a comprehensive Solidity smart contract for a decentralized real estate marketplace built on Hedera. It enables sellers to tokenize real estate assets as NFTs (ERC-721), fractionalize them into ERC-20 tokens for shared ownership, and handle all payments in USDC. The contract includes robust security features, admin controls, and dividend distribution capabilities for fractional owners.
+**ReaLiFi** is a comprehensive Solidity smart contract for a decentralized real estate marketplace built on Hedera. It enables sellers to tokenize real estate assets as NFTs (ERC-721), fractionalize them into ERC-20 tokens for shared ownership, trade shares on a secondary market, and handle all payments in USDC. The contract includes robust security features, admin controls, dividend distribution capabilities, and a complete share trading ecosystem.
 
 **Version:** Solidity ^0.8.28  
 **Author:** Therock Ani  
@@ -33,9 +33,12 @@
 ### Core Capabilities
 - ✅ **NFT-Based Asset Representation:** Each real estate asset is a unique ERC-721 token with metadata and URI
 - ✅ **Fractional Ownership:** Assets can be divided into ERC-20 tokens for multiple investors
+- ✅ **Secondary Market Trading:** Buy and sell fractional shares on the platform marketplace
+- ✅ **Peer-to-Peer Transfers:** Direct share transfers between users off-platform
 - ✅ **USDC Payments:** All transactions use USDC stablecoin for price stability
 - ✅ **Admin Verification System:** Multi-admin support for asset verification and management
 - ✅ **Dividend Distribution:** Automated proportional dividend distribution to fractional owners
+- ✅ **Controlled Withdrawals:** Admin-managed withdrawal permissions for fractional investments
 - ✅ **Purchase Workflow:** Complete lifecycle including listing, payment, confirmation, and cancellation
 - ✅ **Seller Registration:** Mandatory seller registration before listing assets
 - ✅ **Portfolio Tracking:** Comprehensive portfolio views for buyers and sellers
@@ -66,6 +69,7 @@ RealEstateDApp
 - **Factory Pattern:** Assets and fractional shares created on-demand
 - **State Machine:** Asset lifecycle management (created → verified → sold/fractionalized)
 - **Pull Payment:** Buyers initiate payment, sellers confirm to receive funds
+- **Escrow Pattern:** Shares held in contract during marketplace listings
 - **Access Control:** Owner and multi-admin roles for privileged operations
 
 ---
@@ -78,6 +82,8 @@ RealEstateDApp
 Create Asset → Admin Verification → (Purchase OR Fractionalize) → Sold/Distributed
      ↓                                        ↓                         ↓
   Pending                            Available for Sale          Ownership Transfer
+                                              ↓
+                                    Secondary Market Trading
 ```
 
 **States:**
@@ -114,14 +120,42 @@ Create Asset → Admin Verification → (Purchase OR Fractionalize) → Sold/Dis
 - ERC-20 tokens minted and held by contract
 - Buyers purchase fractions via `buyFractionalAsset(tokenId, numTokens)`
 - If one buyer acquires all tokens → receives NFT
-- Fractional buyers can cancel and get refunds anytime
+- Fractional buyers can withdraw (if admin allows) or sell on secondary market
 
 **Ownership Tracking:**
 - Each buyer's token count stored in `buyerFractions` mapping
 - Percentage calculated as: `(tokens_owned * 100 * 1e18) / total_tokens`
 - List of all buyers maintained in `fractionalAssetBuyers` array
 
-### 4. Dividend Distribution
+### 4. Secondary Market Trading
+
+**Share Trading Options:**
+
+**Option A: Direct P2P Transfer (No Fees)**
+- Call `transferShares(tokenId, recipient, numShares)`
+- Immediate transfer, no platform involvement
+- Use case: Gifts, private sales, off-platform transactions
+
+**Option B: Platform Marketplace (2% Fee)**
+- Seller lists shares: `listSharesForSale(tokenId, numShares, pricePerShare)`
+- Shares held in escrow by contract
+- Buyer purchases: `buyListedShares(listingId)`
+- 2% fee deducted, seller receives 98%
+- Can cancel listing: `cancelShareListing(listingId)`
+
+**Benefits:**
+- Provides liquidity for fractional investors
+- Price discovery through market dynamics
+- Alternative to withdrawal restrictions
+
+### 5. Controlled Withdrawals
+
+- Admin sets withdrawal permissions via `setBuyerCanWithdraw(tokenId, true/false)`
+- Prevents capital flight during critical periods
+- Buyers can always trade on secondary market as alternative
+- Partial withdrawals supported: `cancelFractionalAssetPurchase(tokenId, numTokens)`
+
+### 6. Dividend Distribution
 
 - Admin deposits USDC for dividends via `distributeFractionalDividends(tokenId, amount)`
 - Contract calculates proportional shares for each fractional owner
@@ -135,6 +169,7 @@ Create Asset → Admin Verification → (Purchase OR Fractionalize) → Sold/Dis
 ```solidity
 uint256 public constant LISTING_FEE_PERCENTAGE = 3;          // 3% fee on full asset sales
 uint256 public constant CANCELLATION_PENALTY_PERCENTAGE = 1;  // 1% penalty on cancellations
+uint256 public constant SHARE_TRADING_FEE_PERCENTAGE = 2;    // 2% fee on secondary share trades
 uint256 private constant PERCENTAGE_DENOMINATOR = 100;
 uint256 private constant PERCENTAGE_SCALE = 1e18;            // For precise percentage calculations
 uint256 private constant START_TOKEN_ID = 1;
@@ -143,9 +178,10 @@ address private constant ZERO_ADDRESS = address(0);
 ```
 
 **Fee Structure:**
-- **Listing Fee:** 3% deducted from seller's payment on confirmed sales
-- **Cancellation Penalty:** 1% charged to buyer if they cancel a purchase
-- Both fees sent to contract owner
+- **Listing Fee:** 3% deducted from seller's payment on confirmed full asset sales
+- **Cancellation Penalty:** 1% charged to buyer if they cancel a full asset purchase
+- **Share Trading Fee:** 2% charged to buyer on secondary market share purchases
+- All fees sent to contract owner
 
 ---
 
@@ -155,6 +191,7 @@ address private constant ZERO_ADDRESS = address(0);
 
 ```solidity
 uint256 private _tokenIds;                                    // Counter for NFT token IDs
+uint256 private _shareListingIds;                             // Counter for share listing IDs
 RealEstateToken public immutable realEstateToken;            // ERC-20 for fractions
 IERC20 public immutable usdcToken;                           // Payment token
 
@@ -163,6 +200,8 @@ mapping(uint256 => RealEstateAsset) public realEstateAssets; // tokenId → asse
 mapping(address => bool) public sellers;                      // Registered sellers
 mapping(uint256 => FractionalAsset) public fractionalAssets; // tokenId → fractional details
 mapping(address => bool) public isAdmin;                      // Admin addresses
+mapping(uint256 => ShareListing) public shareListings;       // listingId → share listing
+mapping(uint256 => bool) public buyerCanWithdraw;            // tokenId → withdrawal permission
 ```
 
 ### Private State (with Getters)
@@ -176,6 +215,7 @@ mapping(uint256 => bool) private assetCanceled;                // Cancellation s
 mapping(address => mapping(uint256 => uint256)) private buyerFractions; // User → tokenId → tokens
 mapping(uint256 => address[]) private fractionalAssetBuyers;   // All fractional buyers per asset
 mapping(uint256 => uint256) private fractionalPayments;        // Accumulated USDC from fractions
+mapping(uint256 => uint256[]) private assetShareListings;      // tokenId → array of listingIds
 ```
 
 ---
@@ -218,6 +258,21 @@ struct FractionalBuyer {
     address buyer;             // Buyer's wallet address
     uint256 numTokens;         // Number of tokens owned
     uint256 percentage;        // Ownership percentage (scaled by 1e18)
+}
+```
+
+### ShareListing
+
+Represents a secondary market listing for fractional shares.
+
+```solidity
+struct ShareListing {
+    uint256 listingId;         // Unique listing identifier
+    uint256 tokenId;           // Reference to parent NFT asset
+    address seller;            // Address selling the shares
+    uint256 numShares;         // Number of shares being sold
+    uint256 pricePerShare;     // USDC price per share
+    bool active;               // Listing status
 }
 ```
 
@@ -266,9 +321,10 @@ struct BuyerPortfolio {
 | Role | Functions | Description |
 |------|-----------|-------------|
 | **Owner** | `addAdmin`, `removeAdmin`, `withdrawUSDC` | Contract deployer, highest authority |
-| **Admin** | `verifyAsset`, `delistAsset`, `createFractionalAsset`, `distributeFractionalDividends` | Trusted operators for asset management |
-| **Seller** | `createAsset` | Registered users who can list properties |
-| **Buyer** | `buyAsset`, `buyFractionalAsset`, `confirmAssetPayment`, `cancelAssetPurchase`, `cancelFractionalAssetPurchase` | Any wallet can purchase |
+| **Admin** | `verifyAsset`, `delistAsset`, `createFractionalAsset`, `distributeFractionalDividends`, `setBuyerCanWithdraw` | Trusted operators for asset management |
+| **Seller** | `createAsset`, `listSharesForSale`, `cancelShareListing` | Registered users who can list properties and sell shares |
+| **Buyer** | `buyAsset`, `buyFractionalAsset`, `confirmAssetPayment`, `cancelAssetPurchase`, `cancelFractionalAssetPurchase`, `buyListedShares` | Any wallet can purchase |
+| **Share Holder** | `transferShares`, `listSharesForSale`, `cancelShareListing` | Fractional owners can trade their shares |
 
 ### Modifiers
 
@@ -575,6 +631,190 @@ buyerRefund = price - penalty
 
 ---
 
+### Share Trading & Transfer
+
+#### `transferShares(uint256 tokenId, address to, uint256 numShares)`
+
+Transfers fractional shares directly to another address (off-platform transfer).
+
+```solidity
+function transferShares(uint256 tokenId, address to, uint256 numShares) public nonReentrant
+```
+
+**Parameters:**
+- `tokenId`: ID of the fractionalized asset
+- `to`: Recipient address
+- `numShares`: Number of shares to transfer
+
+**Requirements:**
+- Recipient must not be zero address
+- Recipient must not be sender
+- `numShares > 0`
+- Sender must own at least `numShares`
+- Asset must be fractionalized
+
+**Effects:**
+- Decrements sender's `buyerFractions`
+- Increments recipient's `buyerFractions`
+- Adds recipient to `fractionalAssetBuyers` if first purchase
+- Transfers ERC-20 tokens from sender to recipient
+- Emits `SharesTransferred(tokenId, from, to, numShares)`
+
+**Errors:**
+- `InvalidRecipient()`
+- `InvalidAmount()`
+- `NotEnoughTokensOwned()`
+- `FractionalAssetDoesNotExist()`
+
+**Use Case:** Direct P2P transfers outside the marketplace (e.g., gifts, private sales)
+
+**Example:**
+```javascript
+await contract.transferShares(tokenId, recipientAddress, 50);
+```
+
+---
+
+#### `listSharesForSale(uint256 tokenId, uint256 numShares, uint256 pricePerShare)`
+
+Lists fractional shares for sale on the platform marketplace.
+
+```solidity
+function listSharesForSale(uint256 tokenId, uint256 numShares, uint256 pricePerShare) public nonReentrant
+```
+
+**Parameters:**
+- `tokenId`: ID of the fractionalized asset
+- `numShares`: Number of shares to list
+- `pricePerShare`: USDC price per share
+
+**Requirements:**
+- `numShares > 0`
+- `pricePerShare > 0`
+- Seller must own at least `numShares`
+- Asset must be fractionalized
+- Seller must approve contract to transfer ERC-20 tokens
+
+**Effects:**
+- Transfers shares to contract (escrow)
+- Increments `_shareListingIds`
+- Creates `ShareListing` entry
+- Adds listing ID to `assetShareListings`
+- Emits `SharesListed(listingId, tokenId, seller, numShares, pricePerShare)`
+
+**Errors:**
+- `InvalidAmount()`
+- `InvalidPrice()`
+- `NotEnoughTokensOwned()`
+- `FractionalAssetDoesNotExist()`
+
+**Important:** Shares are held in escrow by the contract until listing is bought or canceled.
+
+**Example:**
+```javascript
+// First approve the contract to transfer ERC-20 tokens
+await realEstateTokenContract.approve(
+    contractAddress,
+    ethers.utils.parseUnits("50", 18)
+);
+
+// List 50 shares at 100 USDC each
+await contract.listSharesForSale(
+    tokenId,
+    50,
+    ethers.utils.parseUnits("100", 6)
+);
+```
+
+---
+
+#### `buyListedShares(uint256 listingId)`
+
+Purchases shares from a marketplace listing.
+
+```solidity
+function buyListedShares(uint256 listingId) public nonReentrant
+```
+
+**Parameters:**
+- `listingId`: ID of the share listing to purchase
+
+**Requirements:**
+- Listing must exist
+- Listing must be active
+- Buyer cannot be the seller
+- Buyer must have approved USDC spending
+
+**Effects:**
+- Calculates 2% trading fee
+- Transfers total USDC from buyer to contract
+- Transfers (price - fee) to seller
+- Transfers fee to contract owner
+- Decrements seller's `buyerFractions`
+- Increments buyer's `buyerFractions`
+- Adds buyer to `fractionalAssetBuyers` if first purchase
+- Transfers shares from escrow to buyer
+- Deactivates listing
+- Emits `SharesPurchased(listingId, tokenId, buyer, seller, numShares, totalPrice)`
+
+**Errors:**
+- `ShareListingNotFound()`
+- `ShareListingNotActive()`
+- `CannotBuyOwnShares()`
+- `USDCTransferFailed()`
+
+**Fee Calculation:**
+```javascript
+tradingFee = totalPrice * 2 / 100
+sellerReceives = totalPrice - tradingFee
+```
+
+**Example:**
+```javascript
+// Approve USDC
+const listing = await contract.shareListings(listingId);
+const totalCost = listing.numShares.mul(listing.pricePerShare);
+await usdcContract.approve(contractAddress, totalCost);
+
+// Buy shares
+await contract.buyListedShares(listingId);
+```
+
+---
+
+#### `cancelShareListing(uint256 listingId)`
+
+Cancels an active share listing and returns shares to seller.
+
+```solidity
+function cancelShareListing(uint256 listingId) public nonReentrant
+```
+
+**Parameters:**
+- `listingId`: ID of the share listing to cancel
+
+**Requirements:**
+- Listing must exist
+- Caller must be the listing seller
+- Listing must be active
+
+**Effects:**
+- Returns shares from escrow to seller
+- Deactivates listing
+- Emits `ShareListingCanceled(listingId, tokenId, seller)`
+
+**Errors:**
+- `ShareListingNotFound()`
+- `NotShareSeller()`
+- `ShareListingNotActive()`
+
+**Example:**
+```javascript
+await contract.cancelShareListing(listingId);
+```
+
+---
+
 ### Fractional Ownership
 
 #### `createFractionalAsset(uint256 tokenId, uint256 totalTokens)`
@@ -659,35 +899,40 @@ If a single buyer acquires 100% of fractional tokens:
 
 ---
 
-#### `cancelFractionalAssetPurchase(uint256 tokenId)`
+#### `cancelFractionalAssetPurchase(uint256 tokenId, uint256 numTokens)`
 
-Refunds fractional tokens back to contract.
+Refunds fractional tokens back to contract (partial or full withdrawal).
 
 ```solidity
-function cancelFractionalAssetPurchase(uint256 tokenId) public nonReentrant
+function cancelFractionalAssetPurchase(uint256 tokenId, uint256 numTokens) public nonReentrant
 ```
 
 **Parameters:**
 - `tokenId`: ID of fractionalized asset
+- `numTokens`: Number of tokens to withdraw
 
 **Requirements:**
+- Admin must have enabled withdrawals via `setBuyerCanWithdraw`
 - Caller must own tokens for this asset
+- Caller must own at least `numTokens`
 - Caller has approved ERC-20 transfer back to contract
 
 **Effects:**
-- Calculates refund amount
+- Calculates refund amount for `numTokens`
 - Increments `fractionalAsset.totalTokens` (returns tokens to pool)
-- Resets `buyerFractions[buyer][tokenId] = 0`
+- Decrements `buyerFractions[buyer][tokenId]` by `numTokens`
 - Decrements `fractionalPayments[tokenId]`
 - Transfers ERC-20 tokens back to contract
 - Refunds USDC to buyer
 - Emits `AssetCanceled(tokenId, buyer)`
 
 **Errors:**
+- `CannotWithdrawYet()`
 - `NoTokensOwned()`
+- `NotEnoughTokensOwned()`
 - `USDCTransferFailed()`
 
-**Note:** This allows buyers to exit their investment anytime if the asset hasn't been fully sold.
+**Note:** Withdrawals are controlled by admin to prevent market manipulation during critical periods. Buyers can also sell shares on the secondary market via `listSharesForSale`.
 
 ---
 
@@ -744,6 +989,40 @@ await contract.distributeFractionalDividends(tokenId,
 
 ---
 
+#### `setBuyerCanWithdraw(uint256 tokenId, bool canWithdraw)`
+
+Controls whether fractional buyers can withdraw their investments.
+
+```solidity
+function setBuyerCanWithdraw(uint256 tokenId, bool canWithdraw) public onlyAdmin
+```
+
+**Parameters:**
+- `tokenId`: ID of fractionalized asset
+- `canWithdraw`: Whether to allow withdrawals
+
+**Requirements:**
+- Caller must be admin
+
+**Effects:**
+- Sets `buyerCanWithdraw[tokenId]` flag
+
+**Use Cases:**
+- **Disable withdrawals** during critical fundraising periods to ensure capital stability
+- **Enable withdrawals** when asset is fully funded or during exit windows
+- Manage liquidity and prevent bank runs
+
+**Example:**
+```javascript
+// Enable withdrawals for an asset
+await contract.setBuyerCanWithdraw(tokenId, true);
+
+// Disable withdrawals
+await contract.setBuyerCanWithdraw(tokenId, false);
+```
+
+---
+
 ### Utility Functions
 
 #### `withdrawUSDC(address recipient, uint256 amount)`
@@ -777,6 +1056,7 @@ function withdrawUSDC(address recipient, uint256 amount) public onlyOwner nonRee
 **Use Cases:**
 - Withdraw accumulated listing fees
 - Withdraw cancellation penalties
+- Withdraw share trading fees
 - Emergency USDC recovery
 
 ---
@@ -832,6 +1112,12 @@ function getFractionalPayments(uint256 tokenId) public view returns (uint256)
 
 // Buyer's complete portfolio
 function getBuyerPortfolio(address buyer) public view returns (BuyerPortfolio[] memory)
+
+// Get all active share listings for a specific asset
+function getAssetShareListings(uint256 tokenId) public view returns (ShareListing[] memory)
+
+// Get all active share listings across all assets
+function getAllActiveShareListings() public view returns (ShareListing[] memory)
 ```
 
 #### Payment & Status Queries
@@ -914,6 +1200,36 @@ event FractionalDividendsDistributed(
     address[] buyers,
     uint256[] amounts
 );
+
+event SharesTransferred(
+    uint256 indexed tokenId,
+    address indexed from,
+    address indexed to,
+    uint256 numShares
+);
+
+event SharesListed(
+    uint256 indexed listingId,
+    uint256 indexed tokenId,
+    address indexed seller,
+    uint256 numShares,
+    uint256 pricePerShare
+);
+
+event SharesPurchased(
+    uint256 indexed listingId,
+    uint256 indexed tokenId,
+    address indexed buyer,
+    address seller,
+    uint256 numShares,
+    uint256 totalPrice
+);
+
+event ShareListingCanceled(
+    uint256 indexed listingId,
+    uint256 indexed tokenId,
+    address indexed seller
+);
 ```
 
 ### Administrative Events
@@ -961,6 +1277,12 @@ error FractionalizedAssetWithBuyers();
 error InsufficientTokens();
 error NoTokensOwned();
 error NoTokensIssued();
+error NotEnoughTokensOwned();
+error ShareListingNotFound();
+error ShareListingNotActive();
+error NotShareSeller();
+error CannotBuyOwnShares();
+error CannotWithdrawYet();
 ```
 
 #### Payment Errors
@@ -1147,18 +1469,83 @@ portfolio.forEach(item => {
     console.log(`Value: ${item.investmentValue / 1e6}`);
 });
 
-// 7. Cancel fractional investment (if needed)
-// Must approve ERC-20 token transfer back
+// 7. Cancel fractional investment (if admin allows and needed)
+// Check if withdrawals are enabled
+const canWithdraw = await contract.buyerCanWithdraw(tokenId);
+if (canWithdraw) {
+    // Must approve ERC-20 token transfer back
+    const realEstateTokenContract = new ethers.Contract(
+        await contract.realEstateToken(),
+        ["function approve(address spender, uint256 amount) returns (bool)"],
+        signer
+    );
+    const tokensToWithdraw = 50; // Partial withdrawal
+    await realEstateTokenContract.approve(
+        contract.address,
+        tokensToWithdraw
+    );
+    await contract.cancelFractionalAssetPurchase(tokenId, tokensToWithdraw);
+}
+```
+
+#### Share Holder Flow - Secondary Market Trading
+
+```javascript
+// 1. View your portfolio
+const portfolio = await contract.getBuyerPortfolio(userAddress);
+
+// 2. Option A: Direct Transfer (P2P, no fees)
+const recipientAddress = "0x...";
+const sharesToTransfer = 25;
+
+// Approve ERC-20 token transfer
 const realEstateTokenContract = new ethers.Contract(
     await contract.realEstateToken(),
     ["function approve(address spender, uint256 amount) returns (bool)"],
     signer
 );
-await realEstateTokenContract.approve(
-    contract.address,
-    ethers.constants.MaxUint256
-);
-await contract.cancelFractionalAssetPurchase(tokenId);
+await realEstateTokenContract.approve(contract.address, sharesToTransfer);
+
+// Transfer shares
+await contract.transferShares(tokenId, recipientAddress, sharesToTransfer);
+
+// 2. Option B: List on marketplace (2% fee)
+const sharesToSell = 50;
+const pricePerShare = ethers.utils.parseUnits("110", 6); // 110 USDC each
+
+// Approve ERC-20 token transfer to contract (escrow)
+await realEstateTokenContract.approve(contract.address, sharesToSell);
+
+// List shares
+const tx = await contract.listSharesForSale(tokenId, sharesToSell, pricePerShare);
+const receipt = await tx.wait();
+
+// Get listing ID from event
+const event = receipt.events.find(e => e.event === "SharesListed");
+const listingId = event.args.listingId;
+
+// 3. View active listings for an asset
+const listings = await contract.getAssetShareListings(tokenId);
+listings.forEach(listing => {
+    console.log(`Listing ${listing.listingId}`);
+    console.log(`  Seller: ${listing.seller}`);
+    console.log(`  Shares: ${listing.numShares}`);
+    console.log(`  Price/Share: ${ethers.utils.formatUnits(listing.pricePerShare, 6)}`);
+    console.log(`  Total: ${ethers.utils.formatUnits(listing.numShares.mul(listing.pricePerShare), 6)}`);
+});
+
+// 4. Cancel your listing
+await contract.cancelShareListing(listingId);
+
+// 5. Buy shares from marketplace
+const listingToBuy = listings[0];
+const totalCost = listingToBuy.numShares.mul(listingToBuy.pricePerShare);
+
+// Approve USDC
+await usdcContract.approve(contract.address, totalCost);
+
+// Buy shares
+await contract.buyListedShares(listingToBuy.listingId);
 ```
 
 #### Admin Flow
@@ -1173,14 +1560,21 @@ await contract.verifyAsset(tokenId);
 // 3. Create fractional asset
 await contract.createFractionalAsset(tokenId, 10000); // 10k tokens
 
-// 4. Distribute dividends
+// 4. Control withdrawal permissions
+// Disable withdrawals during fundraising
+await contract.setBuyerCanWithdraw(tokenId, false);
+
+// Enable withdrawals after project completion
+await contract.setBuyerCanWithdraw(tokenId, true);
+
+// 5. Distribute dividends
 const dividendAmount = ethers.utils.parseUnits("5000", 6); // 5k USDC
 await contract.distributeFractionalDividends(tokenId, dividendAmount);
 
-// 5. Delist problematic asset
+// 6. Delist problematic asset
 await contract.delistAsset(tokenId);
 
-// 6. Withdraw fees (owner only)
+// 7. Withdraw fees (owner only)
 await contract.withdrawUSDC(treasuryAddress, withdrawAmount);
 ```
 
@@ -1234,6 +1628,30 @@ contract.on("AssetPaymentConfirmed", (tokenId, buyer) => {
     console.log(`Asset ${tokenId} sold to ${buyer}`);
     // Update UI: mark as sold
 });
+
+// Shares transferred
+contract.on("SharesTransferred", (tokenId, from, to, numShares) => {
+    console.log(`${numShares} shares of asset ${tokenId} transferred from ${from} to ${to}`);
+    // Update UI: refresh portfolio
+});
+
+// Shares listed
+contract.on("SharesListed", (listingId, tokenId, seller, numShares, pricePerShare) => {
+    console.log(`Listing ${listingId}: ${seller} listed ${numShares} shares at ${ethers.utils.formatUnits(pricePerShare, 6)} USDC each`);
+    // Update UI: add to marketplace
+});
+
+// Shares purchased
+contract.on("SharesPurchased", (listingId, tokenId, buyer, seller, numShares, totalPrice) => {
+    console.log(`Listing ${listingId}: ${buyer} bought ${numShares} shares from ${seller} for ${ethers.utils.formatUnits(totalPrice, 6)} USDC`);
+    // Update UI: remove listing, update portfolios
+});
+
+// Share listing canceled
+contract.on("ShareListingCanceled", (listingId, tokenId, seller) => {
+    console.log(`Listing ${listingId} canceled by ${seller}`);
+    // Update UI: remove listing
+});
 ```
 
 ### Data Fetching Patterns
@@ -1261,6 +1679,29 @@ async function loadMarketplace() {
         } : null
     }));
 }
+
+// Get secondary market listings
+async function loadSecondaryMarket() {
+    const allListings = await contract.getAllActiveShareListings();
+    
+    return Promise.all(allListings.map(async (listing) => {
+        const assetInfo = await contract.getAssetDisplayInfo(listing.tokenId);
+        const metadata = await fetchMetadata(assetInfo.tokenURI);
+        
+        return {
+            listingId: listing.listingId.toString(),
+            tokenId: listing.tokenId.toString(),
+            seller: listing.seller,
+            numShares: listing.numShares.toString(),
+            pricePerShare: ethers.utils.formatUnits(listing.pricePerShare, 6),
+            totalPrice: ethers.utils.formatUnits(listing.numShares.mul(listing.pricePerShare), 6),
+            assetName: metadata.name,
+            assetImage: metadata.imageURL,
+            originalPricePerToken: ethers.utils.formatUnits(assetInfo.pricePerFractionalToken, 6),
+            priceChange: ((listing.pricePerShare.sub(assetInfo.pricePerFractionalToken).mul(100)) / assetInfo.pricePerFractionalToken).toString()
+        };
+    }));
+}
 ```
 
 #### Asset Detail Page
@@ -1270,8 +1711,11 @@ async function loadAssetDetails(tokenId) {
     const asset = await contract.getAssetDisplayInfo(tokenId);
     
     let fractionalBuyers = [];
+    let shareListings = [];
+    
     if (asset.isFractionalized) {
         fractionalBuyers = await contract.fetchFractionalAssetBuyers(tokenId);
+        shareListings = await contract.getAssetShareListings(tokenId);
     }
     
     return {
@@ -1282,6 +1726,13 @@ async function loadAssetDetails(tokenId) {
             address: buyer.buyer,
             tokens: buyer.numTokens.toString(),
             percentage: (buyer.percentage / 1e18).toFixed(2)
+        })),
+        activeShareListings: shareListings.map(listing => ({
+            listingId: listing.listingId.toString(),
+            seller: listing.seller,
+            numShares: listing.numShares.toString(),
+            pricePerShare: ethers.utils.formatUnits(listing.pricePerShare, 6),
+            totalPrice: ethers.utils.formatUnits(listing.numShares.mul(listing.pricePerShare), 6)
         }))
     };
 }
@@ -1295,13 +1746,30 @@ async function loadUserPortfolio(userAddress) {
     
     return Promise.all(portfolio.map(async (item) => {
         const assetInfo = await contract.getAssetDisplayInfo(item.tokenId);
+        const canWithdraw = await contract.buyerCanWithdraw(item.tokenId);
+        const activeListings = await contract.getAssetShareListings(item.tokenId);
+        
+        // Check if user has any active listings
+        const userListings = activeListings.filter(
+            listing => listing.seller.toLowerCase() === userAddress.toLowerCase()
+        );
+        
         return {
             tokenId: item.tokenId.toString(),
             tokensOwned: item.fractionalTokensOwned.toString(),
             ownership: (item.ownershipPercentage / 1e18).toFixed(2) + "%",
             invested: ethers.utils.formatUnits(item.investmentValue, 6),
             currentValue: ethers.utils.formatUnits(item.investmentValue, 6), // Could add price appreciation logic
-            metadata: await fetchMetadata(assetInfo.tokenURI)
+            metadata: await fetchMetadata(assetInfo.tokenURI),
+            canWithdraw: canWithdraw,
+            userListings: userListings.map(listing => ({
+                listingId: listing.listingId.toString(),
+                numShares: listing.numShares.toString(),
+                pricePerShare: ethers.utils.formatUnits(listing.pricePerShare, 6)
+            })),
+            availableToTrade: item.fractionalTokensOwned.sub(
+                userListings.reduce((sum, l) => sum.add(l.numShares), ethers.BigNumber.from(0))
+            ).toString()
         };
     }));
 }
@@ -1393,7 +1861,7 @@ async function fetchMetadata(tokenURI) {
 
 1. **ReentrancyGuard**
    - Applied to all functions with external calls
-   - Prevents reentrancy attacks on `buyAsset`, `confirmAssetPayment`, `cancelAssetPurchase`, `buyFractionalAsset`, `cancelFractionalAssetPurchase`, `distributeFractionalDividends`, `delistAsset`, `withdrawUSDC`
+   - Prevents reentrancy attacks on `buyAsset`, `confirmAssetPayment`, `cancelAssetPurchase`, `buyFractionalAsset`, `cancelFractionalAssetPurchase`, `distributeFractionalDividends`, `delistAsset`, `withdrawUSDC`, `transferShares`, `listSharesForSale`, `buyListedShares`, `cancelShareListing`
 
 2. **Access Control**
    - `onlyOwner` for critical admin management
@@ -1408,6 +1876,11 @@ async function fetchMetadata(tokenURI) {
    - Battle-tested ERC-721 implementation
    - Ownable pattern for admin control
    - ERC721Holder for safe NFT reception
+   - SafeERC20 for secure token transfers
+
+5. **Escrow Mechanism**
+   - Shares held securely during marketplace listings
+   - Prevents double-spending of listed shares
 
 ### Best Practices for Integrators
 
@@ -1505,6 +1978,27 @@ function validateAssetPurchase(asset, userAddress) {
     
     return errors;
 }
+
+function validateShareListing(tokenId, numShares, userBalance, activeListings) {
+    const errors = [];
+    
+    if (numShares <= 0) {
+        errors.push("Number of shares must be greater than zero");
+    }
+    
+    // Calculate shares already listed
+    const listedShares = activeListings
+        .filter(l => l.active)
+        .reduce((sum, l) => sum + parseInt(l.numShares), 0);
+    
+    const availableShares = userBalance - listedShares;
+    
+    if (numShares > availableShares) {
+        errors.push(`Only ${availableShares} shares available to list`);
+    }
+    
+    return errors;
+}
 ```
 
 #### 5. User Notifications
@@ -1554,18 +2048,28 @@ async function purchaseAssetWithFeedback(tokenId) {
    - Always use `parseUnits(amount, 6)` and `formatUnits(amount, 6)`
 
 3. **Single Pending Buyer**
-   - Only one buyer can have pending payment per asset
+   - Only one buyer can have pending payment per full asset purchase
    - New buyers must wait for current buyer to confirm or cancel
 
 4. **Fractionalization Irreversibility**
    - Once fractionalized, assets cannot be un-fractionalized
    - Admin should carefully decide on token count
 
-5. **Gas Costs**
+5. **Withdrawal Restrictions**
+   - Fractional withdrawals controlled by admin via `setBuyerCanWithdraw`
+   - Prevents market manipulation during critical fundraising periods
+   - Buyers can alternatively sell shares on secondary market
+
+6. **Share Trading Considerations**
+   - 2% platform fee on secondary market trades
+   - Shares in active listings are held in contract escrow
+   - Direct P2P transfers are fee-free but off-platform
+
+7. **Gas Costs**
    - Array operations can be gas-intensive for assets with many fractional buyers
    - Consider pagination for large datasets
 
-6. **Token URI Immutability**
+8. **Token URI Immutability**
    - Token URIs cannot be changed after minting
    - Ensure metadata is final before listing
 
@@ -1601,7 +2105,8 @@ const multicallContract = new Contract(
 const calls = [
     contract.interface.encodeFunctionData("fetchAvailableAssets", []),
     contract.interface.encodeFunctionData("getBuyerPortfolio", [userAddress]),
-    contract.interface.encodeFunctionData("getSellerMetrics", [userAddress])
+    contract.interface.encodeFunctionData("getSellerMetrics", [userAddress]),
+    contract.interface.encodeFunctionData("getAllActiveShareListings", [])
 ];
 
 const results = await multicallContract.aggregate(calls);
@@ -1613,6 +2118,7 @@ const results = await multicallContract.aggregate(calls);
 // Cache constants and rarely-changing data
 const LISTING_FEE = await contract.LISTING_FEE_PERCENTAGE();
 const CANCELLATION_PENALTY = await contract.CANCELLATION_PENALTY_PERCENTAGE();
+const SHARE_TRADING_FEE = await contract.SHARE_TRADING_FEE_PERCENTAGE();
 const USDC_ADDRESS = await contract.usdcToken();
 const TOKEN_ADDRESS = await contract.realEstateToken();
 
@@ -1620,6 +2126,7 @@ const TOKEN_ADDRESS = await contract.realEstateToken();
 localStorage.setItem("contractConstants", JSON.stringify({
     LISTING_FEE,
     CANCELLATION_PENALTY,
+    SHARE_TRADING_FEE,
     USDC_ADDRESS,
     TOKEN_ADDRESS
 }));
@@ -1659,6 +2166,8 @@ await contract.buyFractionalAsset(tokenId, numTokens, { gasLimit });
 - [ ] Access control testing
 - [ ] Reentrancy attack simulation
 - [ ] Gas cost benchmarking
+- [ ] Share trading escrow security
+- [ ] Withdrawal permission logic
 
 ### Frontend Testing
 
@@ -1669,6 +2178,7 @@ await contract.buyFractionalAsset(tokenId, numTokens, { gasLimit });
 - [ ] Event listening and UI updates
 - [ ] Mobile responsiveness
 - [ ] Loading states and animations
+- [ ] Secondary market interface
 
 ### User Flow Testing
 
@@ -1678,6 +2188,7 @@ await contract.buyFractionalAsset(tokenId, numTokens, { gasLimit });
 - [ ] Verification waiting period
 - [ ] Payment confirmation
 - [ ] Metrics display
+- [ ] Share listing creation
 
 **Buyer Journey:**
 - [ ] Asset browsing
@@ -1691,97 +2202,23 @@ await contract.buyFractionalAsset(tokenId, numTokens, { gasLimit });
 - [ ] Partial purchase
 - [ ] Portfolio tracking
 - [ ] Dividend reception
-- [ ] Cancellation and refund
+- [ ] Withdrawal (when enabled)
+- [ ] Share listing and selling
+
+**Share Trader Journey:**
+- [ ] Browse secondary market
+- [ ] List shares for sale
+- [ ] Cancel listings
+- [ ] Purchase listed shares
+- [ ] Direct P2P transfer
 
 **Admin Journey:**
 - [ ] Asset verification
 - [ ] Fractionalization setup
+- [ ] Withdrawal permission management
 - [ ] Dividend distribution
 - [ ] Asset delisting
 - [ ] Fee withdrawal
-
----
-
-## Deployment Guide
-
-### Prerequisites
-
-1. Deploy RealEstateToken (ERC-20) contract first
-2. Obtain USDC contract address for target network
-3. Prepare deployment wallet with sufficient ETH for gas
-
-### Deployment Script
-
-```javascript
-const { ethers } = require("hardhat");
-
-async function main() {
-    // 1. Deploy RealEstateToken
-    const RealEstateToken = await ethers.getContractFactory("RealEstateToken");
-    const realEstateToken = await RealEstateToken.deploy();
-    await realEstateToken.deployed();
-    console.log("RealEstateToken deployed to:", realEstateToken.address);
-    
-    // 2. Get USDC address (network-specific)
-    const USDC_ADDRESS = "0xA0b86..."; // Replace with actual USDC address
-    
-    // 3. Deploy RealEstateDApp
-    const RealEstateDApp = await ethers.getContractFactory("RealEstateDApp");
-    const dapp = await RealEstateDApp.deploy(
-        realEstateToken.address,
-        USDC_ADDRESS
-    );
-    await dapp.deployed();
-    console.log("RealEstateDApp deployed to:", dapp.address);
-    
-    // 4. Transfer RealEstateToken minting rights to DApp
-    await realEstateToken.transferOwnership(dapp.address);
-    console.log("RealEstateToken ownership transferred");
-    
-    // 5. Add initial admins
-    await dapp.addAdmin("0xAdmin1Address...");
-    await dapp.addAdmin("0xAdmin2Address...");
-    console.log("Admins added");
-    
-    // 6. Verify contracts on Etherscan
-    console.log("\nVerification commands:");
-    console.log(`npx hardhat verify --network mainnet ${realEstateToken.address}`);
-    console.log(`npx hardhat verify --network mainnet ${dapp.address} ${realEstateToken.address} ${USDC_ADDRESS}`);
-}
-
-main()
-    .then(() => process.exit(0))
-    .catch(error => {
-        console.error(error);
-        process.exit(1);
-    });
-```
-
-### Post-Deployment
-
-1. **Verify Contracts**
-   ```bash
-   npx hardhat verify --network <network> <contract-address> <constructor-args>
-   ```
-
-2. **Test Basic Functions**
-   - Register a test seller
-   - Create a test asset
-   - Verify test asset
-   - Test purchase flow
-
-3. **Update Frontend Config**
-   ```javascript
-   export const CONTRACT_ADDRESSES = {
-       realEstateDApp: "0x...",
-       realEstateToken: "0x...",
-       usdc: "0x..."
-   };
-   ```
-
-4. **Monitor Events**
-   - Set up event monitoring service
-   - Configure alerts for critical events
 
 ---
 
@@ -1811,6 +2248,41 @@ const asset = await contract.getAssetDisplayInfo(tokenId);
 console.log("Remaining:", asset.remainingFractionalTokens);
 ```
 
+#### "CannotWithdrawYet" Error
+**Solution:** Check if withdrawals are enabled and contact admin:
+```javascript
+const canWithdraw = await contract.buyerCanWithdraw(tokenId);
+if (!canWithdraw) {
+    console.log("Withdrawals disabled. Use secondary market to sell shares.");
+}
+```
+
+#### "ShareListingNotFound" or "ShareListingNotActive" Error
+**Solution:** Verify listing exists and is still active:
+```javascript
+const listing = await contract.shareListings(listingId);
+if (listing.listingId.toString() === "0") {
+    console.log("Listing does not exist");
+} else if (!listing.active) {
+    console.log("Listing already filled or canceled");
+}
+```
+
+#### "NotEnoughTokensOwned" Error
+**Solution:** Check token balance before listing/transferring:
+```javascript
+const balance = await contract.getBuyerFractions(userAddress, tokenId);
+console.log("Your balance:", balance.toString());
+
+// Also check for active listings that lock tokens
+const activeListings = await contract.getAssetShareListings(tokenId);
+const userListings = activeListings.filter(
+    l => l.seller.toLowerCase() === userAddress.toLowerCase()
+);
+const lockedTokens = userListings.reduce((sum, l) => sum + parseInt(l.numShares), 0);
+console.log("Available to trade:", balance - lockedTokens);
+```
+
 #### Events Not Firing
 **Solutions:**
 - Check WebSocket connection
@@ -1828,46 +2300,315 @@ provider.on("block", async () => {
 - Verify all prerequisites (approvals, balances)
 - Use try-catch and provide manual gas limit
 
+#### Escrow Issues
+**Problem:** Shares stuck in escrow after listing
+**Solution:**
+```javascript
+// Check if you have any active listings
+const listings = await contract.getAssetShareListings(tokenId);
+const myListings = listings.filter(l => 
+    l.seller.toLowerCase() === userAddress.toLowerCase() && l.active
+);
+
+// Cancel listings to release shares from escrow
+for (const listing of myListings) {
+    await contract.cancelShareListing(listing.listingId);
+}
+```
+
 ---
 
- 
-### Function Signatures
+## Function Signatures
 
-```solidity
-// Seller
+### Seller
+```
 registerSeller() → 0x9e59f75d
 createAsset(string,uint256) → 0x4e5a5178
+```
 
-// Admin
+### Admin
+```
 verifyAsset(uint256) → 0x8edb8ced
 delistAsset(uint256) → 0x7a78c3b8
 createFractionalAsset(uint256,uint256) → 0x5fa7b584
 distributeFractionalDividends(uint256,uint256) → 0x8c1a4e8a
+setBuyerCanWithdraw(uint256,bool) → 0x3e7d8f2c
 addAdmin(address) → 0x70480275
 removeAdmin(address) → 0x1785f53c
+```
 
-// Purchase
+### Purchase
+```
 buyAsset(uint256) → 0x5c2b6f9d
 confirmAssetPayment(uint256) → 0x8e8ed1d1
 cancelAssetPurchase(uint256) → 0x68c4ac1e
 buyFractionalAsset(uint256,uint256) → 0x7f4b5c9e
-cancelFractionalAssetPurchase(uint256) → 0x9a7c4e2f
+cancelFractionalAssetPurchase(uint256,uint256) → 0x9a7c4e2f
+```
 
-// Getters
+### Share Trading
+```
+transferShares(uint256,address,uint256) → 0x3f8b9c7a
+listSharesForSale(uint256,uint256,uint256) → 0x6e5d4a2b
+buyListedShares(uint256) → 0x8c7f3e1d
+cancelShareListing(uint256) → 0x4b9a2f6e
+```
+
+### Getters
+```
 fetchAsset(uint256) → 0x7f345965
 fetchAvailableAssets() → 0x5e4f3d2a
 getBuyerPortfolio(address) → 0x6d8b2c1f
 getAssetDisplayInfo(uint256) → 0x4a9e3f7b
+getAssetShareListings(uint256) → 0x5c8e7d3a
+getAllActiveShareListings() → 0x9f4b2e6c
+```
+
+---
+
+## Deployment Guide
+
+### Prerequisites
+
+1. Deploy RealifiFractionalToken (ERC-20) contract first
+2. Obtain USDC contract address for target network
+3. Prepare deployment wallet with sufficient native token for gas
+
+### Deployment Script
+
+```javascript
+const { ethers } = require("hardhat");
+
+async function main() {
+    // 1. Deploy RealifiFractionalToken
+    const RealifiFractionalToken = await ethers.getContractFactory("RealifiFractionalToken");
+    const realEstateToken = await RealifiFractionalToken.deploy();
+    await realEstateToken.deployed();
+    console.log("RealifiFractionalToken deployed to:", realEstateToken.address);
+    
+    // 2. Get USDC address (network-specific)
+    const USDC_ADDRESS = "0xA0b86..."; // Replace with actual USDC address
+    
+    // 3. Deploy ReaLiFi
+    const ReaLiFi = await ethers.getContractFactory("ReaLiFi");
+    const dapp = await ReaLiFi.deploy(
+        realEstateToken.address,
+        USDC_ADDRESS
+    );
+    await dapp.deployed();
+    console.log("ReaLiFi deployed to:", dapp.address);
+    
+    // 4. Transfer RealifiFractionalToken minting rights to DApp
+    await realEstateToken.transferOwnership(dapp.address);
+    console.log("RealifiFractionalToken ownership transferred");
+    
+    // 5. Add initial admins
+    await dapp.addAdmin("0xAdmin1Address...");
+    await dapp.addAdmin("0xAdmin2Address...");
+    console.log("Admins added");
+    
+    // 6. Verify contracts on block explorer
+    console.log("\nVerification commands:");
+    console.log(`npx hardhat verify --network mainnet ${realEstateToken.address}`);
+    console.log(`npx hardhat verify --network mainnet ${dapp.address} ${realEstateToken.address} ${USDC_ADDRESS}`);
+}
+
+main()
+    .then(() => process.exit(0))
+    .catch(error => {
+        console.error(error);
+        process.exit(1);
+    });
+```
+
+### Post-Deployment
+
+1. **Verify Contracts**
+   ```bash
+   npx hardhat verify --network <network> <contract-address> <constructor-args>
+   ```
+
+2. **Test Basic Functions**
+   - Register a test seller
+   - Create a test asset
+   - Verify test asset
+   - Test purchase flow
+   - Test fractional asset creation
+   - Test share listing and trading
+
+3. **Update Frontend Config**
+   ```javascript
+   export const CONTRACT_ADDRESSES = {
+       reaLiFi: "0x...",
+       realifiFractionalToken: "0x...",
+       usdc: "0x..."
+   };
+   
+   export const FEES = {
+       listingFee: 3, // 3%
+       cancellationPenalty: 1, // 1%
+       shareTradingFee: 2 // 2%
+   };
+   ```
+
+4. **Monitor Events**
+   - Set up event monitoring service
+   - Configure alerts for critical events
+   - Track share trading volume
+
+---
+
+## Advanced Use Cases
+
+### 1. Rental Income Distribution
+
+Automatically distribute rental income to fractional owners:
+
+```javascript
+// Monthly rental income distribution
+async function distributeMonthlyRent(tokenId, totalRent) {
+    // Admin collects rent from property manager
+    // Approve USDC to contract
+    await usdcContract.approve(contract.address, totalRent);
+    
+    // Distribute to all fractional owners
+    await contract.distributeFractionalDividends(tokenId, totalRent);
+    
+    console.log(`Distributed ${ethers.utils.formatUnits(totalRent, 6)} USDC to shareholders`);
+}
+```
+
+### 2. Price Discovery Through Secondary Market
+
+Track market sentiment via share trading:
+
+```javascript
+async function analyzeMarketSentiment(tokenId) {
+    const asset = await contract.getAssetDisplayInfo(tokenId);
+    const listings = await contract.getAssetShareListings(tokenId);
+    
+    if (listings.length === 0) {
+        return { sentiment: "neutral", message: "No active listings" };
+    }
+    
+    const avgListingPrice = listings.reduce((sum, l) => 
+        sum.add(l.pricePerShare), ethers.BigNumber.from(0)
+    ).div(listings.length);
+    
+    const originalPrice = asset.pricePerFractionalToken;
+    const priceChange = avgListingPrice.sub(originalPrice).mul(100).div(originalPrice);
+    
+    if (priceChange.gt(10)) {
+        return { sentiment: "bullish", priceChange: priceChange.toString() + "%" };
+    } else if (priceChange.lt(-10)) {
+        return { sentiment: "bearish", priceChange: priceChange.toString() + "%" };
+    } else {
+        return { sentiment: "neutral", priceChange: priceChange.toString() + "%" };
+    }
+}
+```
+
+### 3. Liquidity Windows
+
+Implement scheduled liquidity windows:
+
+```javascript
+// Admin enables withdrawals during specific periods
+async function manageLiquidityWindow(tokenId, startDate, endDate) {
+    const now = Date.now();
+    
+    if (now >= startDate && now <= endDate) {
+        // Enable withdrawals during window
+        await contract.setBuyerCanWithdraw(tokenId, true);
+        console.log("Liquidity window opened");
+    } else {
+        // Disable withdrawals outside window
+        await contract.setBuyerCanWithdraw(tokenId, false);
+        console.log("Liquidity window closed");
+    }
+}
+```
+
+### 4. Shareholder Voting (Off-Chain)
+
+Weighted voting based on ownership:
+
+```javascript
+async function getVotingPower(tokenId, voterAddress) {
+    const buyers = await contract.fetchFractionalAssetBuyers(tokenId);
+    const voter = buyers.find(b => b.buyer.toLowerCase() === voterAddress.toLowerCase());
+    
+    if (!voter) {
+        return { hasVotingRights: false, votingPower: 0 };
+    }
+    
+    return {
+        hasVotingRights: true,
+        votingPower: parseFloat(voter.percentage) / 1e18, // Percentage as decimal
+        tokens: voter.numTokens.toString()
+    };
+}
+```
+
+### 5. Portfolio Rebalancing
+
+Help users rebalance their portfolios:
+
+```javascript
+async function rebalancePortfolio(userAddress, targetAllocations) {
+    const portfolio = await contract.getBuyerPortfolio(userAddress);
+    
+    for (const target of targetAllocations) {
+        const current = portfolio.find(p => p.tokenId.toString() === target.tokenId);
+        const currentAllocation = current ? 
+            parseFloat(ethers.utils.formatUnits(current.investmentValue, 6)) : 0;
+        
+        if (currentAllocation < target.targetAmount) {
+            // Buy more shares
+            const toBuy = target.targetAmount - currentAllocation;
+            console.log(`Buy ${toBuy} USDC worth of asset ${target.tokenId}`);
+        } else if (currentAllocation > target.targetAmount) {
+            // Sell excess shares
+            const toSell = currentAllocation - target.targetAmount;
+            console.log(`Sell ${toSell} USDC worth of asset ${target.tokenId}`);
+        }
+    }
+}
 ```
 
 ---
 
 ## Support & Resources
- 
-- **Email:** anitherock44@gmail.com
 
+**Contact:** anitherock44@gmail.com
+
+**Important Notes:**
+- Always test on testnet before mainnet deployment
+- Keep private keys secure
+- Monitor contract for unusual activity
+- Implement rate limiting on frontend
+- Consider implementing circuit breakers for emergency situations
+- Regular security audits recommended
+  
 ---
 
-**Last Updated:** January 2025  
-**Contract Version:** 1.0  
-**Solidity Version:** ^0.8.28
+## Changelog
+
+### Version 2.0
+- ✅ Added secondary market share trading functionality
+- ✅ Implemented `transferShares` for P2P transfers
+- ✅ Added `listSharesForSale`, `buyListedShares`, `cancelShareListing`
+- ✅ Implemented escrow mechanism for share listings
+- ✅ Added 2% trading fee for marketplace transactions
+- ✅ Implemented controlled withdrawal system with `setBuyerCanWithdraw`
+- ✅ Modified `cancelFractionalAssetPurchase` to support partial withdrawals
+- ✅ Added new getter functions for share listings
+- ✅ Enhanced portfolio tracking with listing information
+
+### Version 1.0
+- Initial release with basic functionality
+- NFT-based asset representation
+- Fractional ownership system
+- Full asset purchase workflow
+- Dividend distribution
+- Admin verification system
