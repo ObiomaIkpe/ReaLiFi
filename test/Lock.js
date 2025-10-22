@@ -1,4 +1,4 @@
-  // Import Hardhat toolbox utilities for network manipulation and fixture loading
+/ Import Hardhat toolbox utilities for network manipulation and fixture loading
 const { time, loadFixture } = require("@nomicfoundation/hardhat-toolbox/network-helpers");
 // Import Hardhat chai matchers for event argument assertions
 const { anyValue } = require("@nomicfoundation/hardhat-chai-matchers/withArgs");
@@ -49,6 +49,7 @@ describe("ReaLiFi and RealifiFractionalToken", function () {
     const pricePerToken = assetPrice / BigInt(totalTokens); // 10 USDC per token
     const listingFeePercentage = 3; // 3% listing fee
     const cancellationPenaltyPercentage = 1; // 1% cancellation penalty
+    const shareTradingFeePercentage = 2; // 2% share trading fee
     const percentageScale = ethers.parseEther("1"); // 1e18 for percentage calculations
 
     // Return fixture data for tests
@@ -65,6 +66,7 @@ describe("ReaLiFi and RealifiFractionalToken", function () {
       pricePerToken,
       listingFeePercentage,
       cancellationPenaltyPercentage,
+      shareTradingFeePercentage,
       percentageScale,
     };
   }
@@ -677,7 +679,7 @@ describe("ReaLiFi and RealifiFractionalToken", function () {
 
   // Test suite for fractional asset cancellation
   describe("Fractional Asset Purchase Cancellation", function () {
-    it("Should allow buyer to cancel fractional purchase", async function () {
+    it("Should allow buyer to cancel fractional purchase when enabled", async function () {
       const { realifi, realifiFractionalToken, usdc, seller, buyer, assetPrice, totalTokens } = await loadFixture(deployContractsFixture);
       await realifi.connect(seller).registerSeller();
       await realifi.connect(seller).createAsset("ipfs://token1", assetPrice);
@@ -686,6 +688,9 @@ describe("ReaLiFi and RealifiFractionalToken", function () {
       
       const numTokens = 10;
       await realifi.connect(buyer).buyFractionalAsset(1, numTokens);
+      
+      // Enable withdrawal for this asset
+      await realifi.setBuyerCanWithdraw(1, true);
       
       const buyerBalanceBefore = await usdc.balanceOf(buyer.address);
       const pricePerToken = assetPrice / BigInt(totalTokens);
@@ -702,12 +707,40 @@ describe("ReaLiFi and RealifiFractionalToken", function () {
       expect(await realifi.getBuyerFractions(buyer.address, 1)).to.equal(0);
     });
 
+    it("Should revert if buyer cannot withdraw yet", async function () {
+      const { realifi, seller, buyer, assetPrice, totalTokens } = await loadFixture(deployContractsFixture);
+      await realifi.connect(seller).registerSeller();
+      await realifi.connect(seller).createAsset("ipfs://token1", assetPrice);
+      await realifi.verifyAsset(1);
+      await realifi.createFractionalAsset(1, totalTokens);
+      await realifi.connect(buyer).buyFractionalAsset(1, 10);
+
+      await expect(realifi.connect(buyer).cancelFractionalAssetPurchase(1, 10))
+        .to.be.revertedWithCustomError(realifi, "CannotWithdrawYet");
+    });
+
+    it("Should allow admin to set buyer withdrawal permission", async function () {
+      const { realifi, seller, assetPrice, totalTokens } = await loadFixture(deployContractsFixture);
+      await realifi.connect(seller).registerSeller();
+      await realifi.connect(seller).createAsset("ipfs://token1", assetPrice);
+      await realifi.verifyAsset(1);
+      await realifi.createFractionalAsset(1, totalTokens);
+
+      await realifi.setBuyerCanWithdraw(1, true);
+      expect(await realifi.buyerCanWithdraw(1)).to.be.true;
+
+      await realifi.setBuyerCanWithdraw(1, false);
+      expect(await realifi.buyerCanWithdraw(1)).to.be.false;
+    });
+
     it("Should revert if buyer has no tokens to cancel", async function () {
       const { realifi, seller, buyer, assetPrice, totalTokens } = await loadFixture(deployContractsFixture);
       await realifi.connect(seller).registerSeller();
       await realifi.connect(seller).createAsset("ipfs://token1", assetPrice);
       await realifi.verifyAsset(1);
       await realifi.createFractionalAsset(1, totalTokens);
+      
+      await realifi.setBuyerCanWithdraw(1, true);
 
       await expect(realifi.connect(buyer).cancelFractionalAssetPurchase(1, 10))
         .to.be.revertedWithCustomError(realifi, "NoTokensOwned");
@@ -723,11 +756,362 @@ describe("ReaLiFi and RealifiFractionalToken", function () {
       const numTokens = 10;
       await realifi.connect(buyer).buyFractionalAsset(1, numTokens);
       
+      await realifi.setBuyerCanWithdraw(1, true);
+      
       // Approve tokens back to contract
       await realifiFractionalToken.connect(buyer).approve(realifi.target, numTokens + 5);
       
       await expect(realifi.connect(buyer).cancelFractionalAssetPurchase(1, numTokens + 5))
         .to.be.revertedWithCustomError(realifi, "NotEnoughTokensOwned");
     });
-  }); 
+  });
+
+  // Test suite for share transfer functionality
+  describe("Share Transfer", function () {
+    it("Should allow user to transfer shares to another address", async function () {
+      const { realifi, realifiFractionalToken, seller, buyer, otherAccount, assetPrice, totalTokens } = await loadFixture(deployContractsFixture);
+      await realifi.connect(seller).registerSeller();
+      await realifi.connect(seller).createAsset("ipfs://token1", assetPrice);
+      await realifi.verifyAsset(1);
+      await realifi.createFractionalAsset(1, totalTokens);
+      
+      const numTokens = 20;
+      await realifi.connect(buyer).buyFractionalAsset(1, numTokens);
+      
+      // Approve transfer
+      await realifiFractionalToken.connect(buyer).approve(realifi.target, numTokens);
+      
+      const sharesToTransfer = 10;
+      await expect(realifi.connect(buyer).transferShares(1, otherAccount.address, sharesToTransfer))
+        .to.emit(realifi, "SharesTransferred")
+        .withArgs(1, buyer.address, otherAccount.address, sharesToTransfer);
+      
+      expect(await realifi.getBuyerFractions(buyer.address, 1)).to.equal(numTokens - sharesToTransfer);
+      expect(await realifi.getBuyerFractions(otherAccount.address, 1)).to.equal(sharesToTransfer);
+      expect(await realifiFractionalToken.balanceOf(otherAccount.address)).to.equal(sharesToTransfer);
+    });
+
+    it("Should revert if transferring to zero address", async function () {
+      const { realifi, seller, buyer, assetPrice, totalTokens } = await loadFixture(deployContractsFixture);
+      await realifi.connect(seller).registerSeller();
+      await realifi.connect(seller).createAsset("ipfs://token1", assetPrice);
+      await realifi.verifyAsset(1);
+      await realifi.createFractionalAsset(1, totalTokens);
+      await realifi.connect(buyer).buyFractionalAsset(1, 10);
+
+      await expect(realifi.connect(buyer).transferShares(1, ethers.ZeroAddress, 5))
+        .to.be.revertedWithCustomError(realifi, "InvalidRecipient");
+    });
+
+    it("Should revert if transferring to self", async function () {
+      const { realifi, seller, buyer, assetPrice, totalTokens } = await loadFixture(deployContractsFixture);
+      await realifi.connect(seller).registerSeller();
+      await realifi.connect(seller).createAsset("ipfs://token1", assetPrice);
+      await realifi.verifyAsset(1);
+      await realifi.createFractionalAsset(1, totalTokens);
+      await realifi.connect(buyer).buyFractionalAsset(1, 10);
+
+      await expect(realifi.connect(buyer).transferShares(1, buyer.address, 5))
+        .to.be.revertedWithCustomError(realifi, "InvalidRecipient");
+    });
+
+    it("Should revert if transferring more shares than owned", async function () {
+      const { realifi, seller, buyer, otherAccount, assetPrice, totalTokens } = await loadFixture(deployContractsFixture);
+      await realifi.connect(seller).registerSeller();
+      await realifi.connect(seller).createAsset("ipfs://token1", assetPrice);
+      await realifi.verifyAsset(1);
+      await realifi.createFractionalAsset(1, totalTokens);
+      await realifi.connect(buyer).buyFractionalAsset(1, 10);
+
+      await expect(realifi.connect(buyer).transferShares(1, otherAccount.address, 15))
+        .to.be.revertedWithCustomError(realifi, "NotEnoughTokensOwned");
+    });
+  });
+
+  // Test suite for listing shares for sale
+  describe("List Shares For Sale", function () {
+    it("Should allow user to list shares for sale", async function () {
+      const { realifi, realifiFractionalToken, seller, buyer, assetPrice, totalTokens } = await loadFixture(deployContractsFixture);
+      await realifi.connect(seller).registerSeller();
+      await realifi.connect(seller).createAsset("ipfs://token1", assetPrice);
+      await realifi.verifyAsset(1);
+      await realifi.createFractionalAsset(1, totalTokens);
+      
+      const numTokens = 20;
+      await realifi.connect(buyer).buyFractionalAsset(1, numTokens);
+      
+      // Approve transfer to contract for escrow
+      await realifiFractionalToken.connect(buyer).approve(realifi.target, numTokens);
+      
+      const sharesToList = 10;
+      const pricePerShare = ethers.parseUnits("12", 6); // 12 USDC per share
+      
+      await expect(realifi.connect(buyer).listSharesForSale(1, sharesToList, pricePerShare))
+        .to.emit(realifi, "SharesListed")
+        .withArgs(1, 1, buyer.address, sharesToList, pricePerShare);
+      
+      const listing = await realifi.shareListings(1);
+      expect(listing.tokenId).to.equal(1);
+      expect(listing.seller).to.equal(buyer.address);
+      expect(listing.numShares).to.equal(sharesToList);
+      expect(listing.pricePerShare).to.equal(pricePerShare);
+      expect(listing.active).to.be.true;
+      
+      // Shares should be in escrow
+      expect(await realifiFractionalToken.balanceOf(realifi.target)).to.equal(totalTokens - (numTokens - sharesToList));
+    });
+
+    it("Should revert if listing zero shares", async function () {
+      const { realifi, seller, buyer, assetPrice, totalTokens } = await loadFixture(deployContractsFixture);
+      await realifi.connect(seller).registerSeller();
+      await realifi.connect(seller).createAsset("ipfs://token1", assetPrice);
+      await realifi.verifyAsset(1);
+      await realifi.createFractionalAsset(1, totalTokens);
+      await realifi.connect(buyer).buyFractionalAsset(1, 10);
+
+      await expect(realifi.connect(buyer).listSharesForSale(1, 0, ethers.parseUnits("10", 6)))
+        .to.be.revertedWithCustomError(realifi, "InvalidAmount");
+    });
+
+    it("Should revert if price per share is zero", async function () {
+      const { realifi, seller, buyer, assetPrice, totalTokens } = await loadFixture(deployContractsFixture);
+      await realifi.connect(seller).registerSeller();
+      await realifi.connect(seller).createAsset("ipfs://token1", assetPrice);
+      await realifi.verifyAsset(1);
+      await realifi.createFractionalAsset(1, totalTokens);
+      await realifi.connect(buyer).buyFractionalAsset(1, 10);
+
+      await expect(realifi.connect(buyer).listSharesForSale(1, 5, 0))
+        .to.be.revertedWithCustomError(realifi, "InvalidPrice");
+    });
+
+    it("Should revert if listing more shares than owned", async function () {
+      const { realifi, seller, buyer, assetPrice, totalTokens } = await loadFixture(deployContractsFixture);
+      await realifi.connect(seller).registerSeller();
+      await realifi.connect(seller).createAsset("ipfs://token1", assetPrice);
+      await realifi.verifyAsset(1);
+      await realifi.createFractionalAsset(1, totalTokens);
+      await realifi.connect(buyer).buyFractionalAsset(1, 10);
+
+      await expect(realifi.connect(buyer).listSharesForSale(1, 15, ethers.parseUnits("10", 6)))
+        .to.be.revertedWithCustomError(realifi, "NotEnoughTokensOwned");
+    });
+  });
+
+  // Test suite for buying listed shares
+  describe("Buy Listed Shares", function () {
+    it("Should allow user to buy listed shares", async function () {
+      const { realifi, realifiFractionalToken, usdc, seller, buyer, otherAccount, owner, assetPrice, totalTokens, shareTradingFeePercentage } = await loadFixture(deployContractsFixture);
+      await realifi.connect(seller).registerSeller();
+      await realifi.connect(seller).createAsset("ipfs://token1", assetPrice);
+      await realifi.verifyAsset(1);
+      await realifi.createFractionalAsset(1, totalTokens);
+      
+      const numTokens = 20;
+      await realifi.connect(buyer).buyFractionalAsset(1, numTokens);
+      
+      // Approve and list shares
+      await realifiFractionalToken.connect(buyer).approve(realifi.target, numTokens);
+      const sharesToList = 10;
+      const pricePerShare = ethers.parseUnits("12", 6);
+      await realifi.connect(buyer).listSharesForSale(1, sharesToList, pricePerShare);
+      
+      const totalPrice = pricePerShare * BigInt(sharesToList);
+      const tradingFee = (totalPrice * BigInt(shareTradingFeePercentage)) / BigInt(100);
+      const sellerPayment = totalPrice - tradingFee;
+      
+      const buyerBalanceBefore = await usdc.balanceOf(buyer.address);
+      const otherAccountBalanceBefore = await usdc.balanceOf(otherAccount.address);
+      const ownerBalanceBefore = await usdc.balanceOf(owner.address);
+      
+      await expect(realifi.connect(otherAccount).buyListedShares(1))
+        .to.emit(realifi, "SharesPurchased")
+        .withArgs(1, 1, otherAccount.address, buyer.address, sharesToList, totalPrice);
+      
+      // Verify balances
+      expect(await usdc.balanceOf(buyer.address)).to.equal(buyerBalanceBefore + sellerPayment);
+      expect(await usdc.balanceOf(otherAccount.address)).to.equal(otherAccountBalanceBefore - totalPrice);
+      expect(await usdc.balanceOf(owner.address)).to.equal(ownerBalanceBefore + tradingFee);
+      
+      // Verify share ownership
+      expect(await realifi.getBuyerFractions(buyer.address, 1)).to.equal(numTokens - sharesToList);
+      expect(await realifi.getBuyerFractions(otherAccount.address, 1)).to.equal(sharesToList);
+      expect(await realifiFractionalToken.balanceOf(otherAccount.address)).to.equal(sharesToList);
+      
+      // Verify listing is inactive
+      const listing = await realifi.shareListings(1);
+      expect(listing.active).to.be.false;
+    });
+
+    it("Should revert if listing does not exist", async function () {
+      const { realifi, buyer } = await loadFixture(deployContractsFixture);
+      
+      await expect(realifi.connect(buyer).buyListedShares(999))
+        .to.be.revertedWithCustomError(realifi, "ShareListingNotFound");
+    });
+
+    it("Should revert if listing is not active", async function () {
+      const { realifi, realifiFractionalToken, seller, buyer, otherAccount, assetPrice, totalTokens } = await loadFixture(deployContractsFixture);
+      await realifi.connect(seller).registerSeller();
+      await realifi.connect(seller).createAsset("ipfs://token1", assetPrice);
+      await realifi.verifyAsset(1);
+      await realifi.createFractionalAsset(1, totalTokens);
+      
+      await realifi.connect(buyer).buyFractionalAsset(1, 20);
+      await realifiFractionalToken.connect(buyer).approve(realifi.target, 20);
+      await realifi.connect(buyer).listSharesForSale(1, 10, ethers.parseUnits("12", 6));
+      
+      // Buy the shares (makes listing inactive)
+      await realifi.connect(otherAccount).buyListedShares(1);
+      
+      // Try to buy again
+      await expect(realifi.connect(otherAccount).buyListedShares(1))
+        .to.be.revertedWithCustomError(realifi, "ShareListingNotActive");
+    });
+
+    it("Should revert if buyer tries to buy own shares", async function () {
+      const { realifi, realifiFractionalToken, seller, buyer, assetPrice, totalTokens } = await loadFixture(deployContractsFixture);
+      await realifi.connect(seller).registerSeller();
+      await realifi.connect(seller).createAsset("ipfs://token1", assetPrice);
+      await realifi.verifyAsset(1);
+      await realifi.createFractionalAsset(1, totalTokens);
+      
+      await realifi.connect(buyer).buyFractionalAsset(1, 20);
+      await realifiFractionalToken.connect(buyer).approve(realifi.target, 20);
+      await realifi.connect(buyer).listSharesForSale(1, 10, ethers.parseUnits("12", 6));
+      
+      await expect(realifi.connect(buyer).buyListedShares(1))
+        .to.be.revertedWithCustomError(realifi, "CannotBuyOwnShares");
+    });
+  });
+
+  // Test suite for canceling share listings
+  describe("Cancel Share Listing", function () {
+    it("Should allow seller to cancel share listing", async function () {
+      const { realifi, realifiFractionalToken, seller, buyer, assetPrice, totalTokens } = await loadFixture(deployContractsFixture);
+      await realifi.connect(seller).registerSeller();
+      await realifi.connect(seller).createAsset("ipfs://token1", assetPrice);
+      await realifi.verifyAsset(1);
+      await realifi.createFractionalAsset(1, totalTokens);
+      
+      const numTokens = 20;
+      await realifi.connect(buyer).buyFractionalAsset(1, numTokens);
+      
+      await realifiFractionalToken.connect(buyer).approve(realifi.target, numTokens);
+      const sharesToList = 10;
+      const pricePerShare = ethers.parseUnits("12", 6);
+      await realifi.connect(buyer).listSharesForSale(1, sharesToList, pricePerShare);
+      
+      const buyerBalanceBefore = await realifiFractionalToken.balanceOf(buyer.address);
+      
+      await expect(realifi.connect(buyer).cancelShareListing(1))
+        .to.emit(realifi, "ShareListingCanceled")
+        .withArgs(1, 1, buyer.address);
+      
+      // Shares returned to seller
+      expect(await realifiFractionalToken.balanceOf(buyer.address)).to.equal(buyerBalanceBefore + BigInt(sharesToList));
+      
+      // Listing is inactive
+      const listing = await realifi.shareListings(1);
+      expect(listing.active).to.be.false;
+    });
+
+    it("Should revert if not the seller tries to cancel", async function () {
+      const { realifi, realifiFractionalToken, seller, buyer, otherAccount, assetPrice, totalTokens } = await loadFixture(deployContractsFixture);
+      await realifi.connect(seller).registerSeller();
+      await realifi.connect(seller).createAsset("ipfs://token1", assetPrice);
+      await realifi.verifyAsset(1);
+      await realifi.createFractionalAsset(1, totalTokens);
+      
+      await realifi.connect(buyer).buyFractionalAsset(1, 20);
+      await realifiFractionalToken.connect(buyer).approve(realifi.target, 20);
+      await realifi.connect(buyer).listSharesForSale(1, 10, ethers.parseUnits("12", 6));
+      
+      await expect(realifi.connect(otherAccount).cancelShareListing(1))
+        .to.be.revertedWithCustomError(realifi, "NotShareSeller");
+    });
+
+    it("Should revert if listing is already inactive", async function () {
+      const { realifi, realifiFractionalToken, seller, buyer, assetPrice, totalTokens } = await loadFixture(deployContractsFixture);
+      await realifi.connect(seller).registerSeller();
+      await realifi.connect(seller).createAsset("ipfs://token1", assetPrice);
+      await realifi.verifyAsset(1);
+      await realifi.createFractionalAsset(1, totalTokens);
+      
+      await realifi.connect(buyer).buyFractionalAsset(1, 20);
+      await realifiFractionalToken.connect(buyer).approve(realifi.target, 20);
+      await realifi.connect(buyer).listSharesForSale(1, 10, ethers.parseUnits("12", 6));
+      
+      await realifi.connect(buyer).cancelShareListing(1);
+      
+      await expect(realifi.connect(buyer).cancelShareListing(1))
+        .to.be.revertedWithCustomError(realifi, "ShareListingNotActive");
+    });
+  });
+
+  // Test suite for getting share listings
+  describe("Get Share Listings", function () {
+    it("Should return all active share listings for an asset", async function () {
+      const { realifi, realifiFractionalToken, seller, buyer, otherAccount, assetPrice, totalTokens } = await loadFixture(deployContractsFixture);
+      await realifi.connect(seller).registerSeller();
+      await realifi.connect(seller).createAsset("ipfs://token1", assetPrice);
+      await realifi.verifyAsset(1);
+      await realifi.createFractionalAsset(1, totalTokens);
+      
+      // Two buyers purchase and list shares
+      await realifi.connect(buyer).buyFractionalAsset(1, 30);
+      await realifi.connect(otherAccount).buyFractionalAsset(1, 20);
+      
+      await realifiFractionalToken.connect(buyer).approve(realifi.target, 30);
+      await realifiFractionalToken.connect(otherAccount).approve(realifi.target, 20);
+      
+      await realifi.connect(buyer).listSharesForSale(1, 10, ethers.parseUnits("12", 6));
+      await realifi.connect(otherAccount).listSharesForSale(1, 15, ethers.parseUnits("11", 6));
+      
+      const listings = await realifi.getAssetShareListings(1);
+      expect(listings.length).to.equal(2);
+      expect(listings[0].numShares).to.equal(10);
+      expect(listings[1].numShares).to.equal(15);
+    });
+
+    it("Should return all active share listings across all assets", async function () {
+      const { realifi, realifiFractionalToken, seller, buyer, assetPrice, totalTokens } = await loadFixture(deployContractsFixture);
+      await realifi.connect(seller).registerSeller();
+      await realifi.connect(seller).createAsset("ipfs://token1", assetPrice);
+      await realifi.connect(seller).createAsset("ipfs://token2", assetPrice);
+      await realifi.verifyAsset(1);
+      await realifi.verifyAsset(2);
+      await realifi.createFractionalAsset(1, totalTokens);
+      await realifi.createFractionalAsset(2, totalTokens);
+      
+      await realifi.connect(buyer).buyFractionalAsset(1, 20);
+      await realifi.connect(buyer).buyFractionalAsset(2, 15);
+      
+      await realifiFractionalToken.connect(buyer).approve(realifi.target, 35);
+      
+      await realifi.connect(buyer).listSharesForSale(1, 10, ethers.parseUnits("12", 6));
+      await realifi.connect(buyer).listSharesForSale(2, 5, ethers.parseUnits("15", 6));
+      
+      const allListings = await realifi.getAllActiveShareListings();
+      expect(allListings.length).to.equal(2);
+    });
+
+    it("Should not return inactive listings", async function () {
+      const { realifi, realifiFractionalToken, seller, buyer, otherAccount, assetPrice, totalTokens } = await loadFixture(deployContractsFixture);
+      await realifi.connect(seller).registerSeller();
+      await realifi.connect(seller).createAsset("ipfs://token1", assetPrice);
+      await realifi.verifyAsset(1);
+      await realifi.createFractionalAsset(1, totalTokens);
+      
+      await realifi.connect(buyer).buyFractionalAsset(1, 30);
+      await realifiFractionalToken.connect(buyer).approve(realifi.target, 30);
+      await realifi.connect(buyer).listSharesForSale(1, 10, ethers.parseUnits("12", 6));
+      
+      // Cancel the listing
+      await realifi.connect(buyer).cancelShareListing(1);
+      
+      const listings = await realifi.getAssetShareListings(1);
+      expect(listings.length).to.equal(0);
+    });
+  });
 });
