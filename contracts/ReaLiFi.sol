@@ -19,6 +19,7 @@ contract ReaLiFi is Ownable, ERC721URIStorage, ERC721Holder, ReentrancyGuard {
     // --- Constants ---
     uint256 public constant LISTING_FEE_PERCENTAGE = 3;
     uint256 public constant CANCELLATION_PENALTY_PERCENTAGE = 1;
+    uint256 public constant SHARE_TRADING_FEE_PERCENTAGE = 2; // 2% fee for share trades
     uint256 private constant PERCENTAGE_DENOMINATOR = 100;
     uint256 private constant PERCENTAGE_SCALE = 1e18;
     uint256 private constant START_TOKEN_ID = 1;
@@ -27,6 +28,7 @@ contract ReaLiFi is Ownable, ERC721URIStorage, ERC721Holder, ReentrancyGuard {
 
     // --- State Variables ---
     uint256 private _tokenIds;
+    uint256 private _shareListingIds;
     RealifiFractionalToken public immutable realEstateToken;
     IERC20 public immutable usdcToken;
 
@@ -35,6 +37,7 @@ contract ReaLiFi is Ownable, ERC721URIStorage, ERC721Holder, ReentrancyGuard {
     mapping(address => bool) public sellers;
     mapping(uint256 => FractionalAsset) public fractionalAssets;
     mapping(address => bool) public isAdmin;
+    mapping(uint256 => ShareListing) public shareListings; // listingId => ShareListing
 
     // PRIVATE mappings with getter functions
     mapping(address => uint256) private sellerConfirmedPurchases;
@@ -45,6 +48,8 @@ contract ReaLiFi is Ownable, ERC721URIStorage, ERC721Holder, ReentrancyGuard {
     mapping(address => mapping(uint256 => uint256)) private buyerFractions;
     mapping(uint256 => address[]) private fractionalAssetBuyers;
     mapping(uint256 => uint256) private fractionalPayments;
+    mapping(uint256 => uint256[]) private assetShareListings; // tokenId => array of listingIds
+    mapping(uint256 => bool) public buyerCanWithdraw; // tokenId => bool
 
     // --- Structs ---
     struct RealEstateAsset {
@@ -66,6 +71,15 @@ contract ReaLiFi is Ownable, ERC721URIStorage, ERC721Holder, ReentrancyGuard {
         address buyer;
         uint256 numTokens;
         uint256 percentage;
+    }
+
+    struct ShareListing {
+        uint256 listingId;
+        uint256 tokenId;
+        address seller;
+        uint256 numShares;
+        uint256 pricePerShare;
+        bool active;
     }
 
     /// @notice Extended asset info for UI display
@@ -117,6 +131,11 @@ contract ReaLiFi is Ownable, ERC721URIStorage, ERC721Holder, ReentrancyGuard {
     error FractionalAssetDoesNotExist();
     error NotAdmin(address);
     error NotEnoughTokensOwned();
+    error ShareListingNotFound();
+    error ShareListingNotActive();
+    error NotShareSeller();
+    error CannotBuyOwnShares();
+    error CannotWithdrawYet();
 
     // --- Events ---
     event AssetCreated(uint256 indexed tokenId, uint256 price, address indexed seller, bool verified);
@@ -130,6 +149,10 @@ contract ReaLiFi is Ownable, ERC721URIStorage, ERC721Holder, ReentrancyGuard {
     event AssetVerified(uint256 indexed tokenId, address indexed seller);
     event AssetDelisted(uint256 indexed tokenId, address indexed seller);
     event FractionalDividendsDistributed(uint256 indexed tokenId, uint256 totalAmount, address[] buyers, uint256[] amounts);
+    event SharesTransferred(uint256 indexed tokenId, address indexed from, address indexed to, uint256 numShares);
+    event SharesListed(uint256 indexed listingId, uint256 indexed tokenId, address indexed seller, uint256 numShares, uint256 pricePerShare);
+    event SharesPurchased(uint256 indexed listingId, uint256 indexed tokenId, address indexed buyer, address seller, uint256 numShares, uint256 totalPrice);
+    event ShareListingCanceled(uint256 indexed listingId, uint256 indexed tokenId, address indexed seller);
 
     constructor(address _realEstateToken, address _usdcToken) ERC721("RealifiAssetToken", "RAT") {
         realEstateToken = RealifiFractionalToken(_realEstateToken);
@@ -178,6 +201,55 @@ contract ReaLiFi is Ownable, ERC721URIStorage, ERC721Holder, ReentrancyGuard {
     /// @notice Get seller metrics
     function getSellerMetrics(address sellerAddress) public view returns (uint256 confirmed, uint256 canceled) {
         return (sellerConfirmedPurchases[sellerAddress], sellerCanceledPurchases[sellerAddress]);
+    }
+
+    /// @notice Get all active share listings for a specific asset
+    function getAssetShareListings(uint256 tokenId) public view returns (ShareListing[] memory) {
+        uint256[] memory listingIds = assetShareListings[tokenId];
+        uint256 activeCount = 0;
+
+        // Count active listings
+        for (uint256 i = 0; i < listingIds.length; i++) {
+            if (shareListings[listingIds[i]].active) {
+                activeCount++;
+            }
+        }
+
+        ShareListing[] memory activeListings = new ShareListing[](activeCount);
+        uint256 currentIndex = 0;
+
+        for (uint256 i = 0; i < listingIds.length; i++) {
+            if (shareListings[listingIds[i]].active) {
+                activeListings[currentIndex] = shareListings[listingIds[i]];
+                currentIndex++;
+            }
+        }
+
+        return activeListings;
+    }
+
+    /// @notice Get all active share listings across all assets
+    function getAllActiveShareListings() public view returns (ShareListing[] memory) {
+        uint256 activeCount = 0;
+
+        // Count active listings
+        for (uint256 i = 1; i <= _shareListingIds; i++) {
+            if (shareListings[i].active) {
+                activeCount++;
+            }
+        }
+
+        ShareListing[] memory activeListings = new ShareListing[](activeCount);
+        uint256 currentIndex = 0;
+
+        for (uint256 i = 1; i <= _shareListingIds; i++) {
+            if (shareListings[i].active) {
+                activeListings[currentIndex] = shareListings[i];
+                currentIndex++;
+            }
+        }
+
+        return activeListings;
     }
 
     /// @notice Get comprehensive asset display information for UI
@@ -348,6 +420,132 @@ contract ReaLiFi is Ownable, ERC721URIStorage, ERC721Holder, ReentrancyGuard {
         return items;
     }
 
+    // ============================================
+    // SHARE TRANSFER AND TRADING FUNCTIONS
+    // ============================================
+
+    /// @notice Transfer fractional shares to another address (off-platform sale)
+    /// @param tokenId The asset token ID
+    /// @param to The recipient address
+    /// @param numShares Number of shares to transfer
+    function transferShares(uint256 tokenId, address to, uint256 numShares) public nonReentrant {
+        if (to == ZERO_ADDRESS) revert InvalidRecipient();
+        if (to == msg.sender) revert InvalidRecipient();
+        if (numShares == ZERO_AMOUNT) revert InvalidAmount();
+        if (buyerFractions[msg.sender][tokenId] < numShares) revert NotEnoughTokensOwned();
+        if (fractionalAssets[tokenId].seller == ZERO_ADDRESS) revert FractionalAssetDoesNotExist();
+
+        // Update sender's balance
+        buyerFractions[msg.sender][tokenId] -= numShares;
+
+        // Update recipient's balance
+        bool isNewBuyer = buyerFractions[to][tokenId] == 0;
+        buyerFractions[to][tokenId] += numShares;
+
+        // Add recipient to buyers list if new
+        if (isNewBuyer) {
+            fractionalAssetBuyers[tokenId].push(to);
+        }
+
+        // Transfer the fractional tokens
+        realEstateToken.safeTransferFrom(msg.sender, to, numShares);
+
+        emit SharesTransferred(tokenId, msg.sender, to, numShares);
+    }
+
+    /// @notice List fractional shares for sale on the platform
+    /// @param tokenId The asset token ID
+    /// @param numShares Number of shares to list
+    /// @param pricePerShare Price per share in USDC
+    function listSharesForSale(uint256 tokenId, uint256 numShares, uint256 pricePerShare) public nonReentrant {
+        if (numShares == ZERO_AMOUNT) revert InvalidAmount();
+        if (pricePerShare == ZERO_AMOUNT) revert InvalidPrice();
+        if (buyerFractions[msg.sender][tokenId] < numShares) revert NotEnoughTokensOwned();
+        if (fractionalAssets[tokenId].seller == ZERO_ADDRESS) revert FractionalAssetDoesNotExist();
+
+        // Transfer shares to contract for escrow
+        realEstateToken.safeTransferFrom(msg.sender, address(this), numShares);
+
+        // Create listing
+        _shareListingIds++;
+        uint256 newListingId = _shareListingIds;
+
+        shareListings[newListingId] = ShareListing({
+            listingId: newListingId,
+            tokenId: tokenId,
+            seller: msg.sender,
+            numShares: numShares,
+            pricePerShare: pricePerShare,
+            active: true
+        });
+
+        assetShareListings[tokenId].push(newListingId);
+
+        emit SharesListed(newListingId, tokenId, msg.sender, numShares, pricePerShare);
+    }
+
+    /// @notice Buy listed shares from another user
+    /// @param listingId The ID of the share listing
+    function buyListedShares(uint256 listingId) public nonReentrant {
+        ShareListing storage listing = shareListings[listingId];
+        
+        if (listing.listingId == 0) revert ShareListingNotFound();
+        if (!listing.active) revert ShareListingNotActive();
+        if (listing.seller == msg.sender) revert CannotBuyOwnShares();
+
+        uint256 totalPrice = listing.numShares * listing.pricePerShare;
+        uint256 tradingFee = (totalPrice * SHARE_TRADING_FEE_PERCENTAGE) / PERCENTAGE_DENOMINATOR;
+        uint256 sellerPayment = totalPrice - tradingFee;
+
+        // Transfer USDC from buyer
+        usdcToken.safeTransferFrom(msg.sender, address(this), totalPrice);
+
+        // Pay seller and platform fee
+        usdcToken.safeTransfer(listing.seller, sellerPayment);
+        usdcToken.safeTransfer(owner(), tradingFee);
+
+        // Update buyer fractions (remove from seller, add to buyer)
+        buyerFractions[listing.seller][listing.tokenId] -= listing.numShares;
+        
+        bool isNewBuyer = buyerFractions[msg.sender][listing.tokenId] == 0;
+        buyerFractions[msg.sender][listing.tokenId] += listing.numShares;
+
+        // Add buyer to list if new
+        if (isNewBuyer) {
+            fractionalAssetBuyers[listing.tokenId].push(msg.sender);
+        }
+
+        // Transfer shares from escrow to buyer
+        realEstateToken.safeTransfer(msg.sender, listing.numShares);
+
+        // Deactivate listing
+        listing.active = false;
+
+        emit SharesPurchased(listingId, listing.tokenId, msg.sender, listing.seller, listing.numShares, totalPrice);
+    }
+
+    /// @notice Cancel a share listing
+    /// @param listingId The ID of the share listing
+    function cancelShareListing(uint256 listingId) public nonReentrant {
+        ShareListing storage listing = shareListings[listingId];
+        
+        if (listing.listingId == 0) revert ShareListingNotFound();
+        if (listing.seller != msg.sender) revert NotShareSeller();
+        if (!listing.active) revert ShareListingNotActive();
+
+        // Return shares from escrow to seller
+        realEstateToken.safeTransfer(listing.seller, listing.numShares);
+
+        // Deactivate listing
+        listing.active = false;
+
+        emit ShareListingCanceled(listingId, listing.tokenId, msg.sender);
+    }
+
+    // ============================================
+    // EXISTING FUNCTIONS (UNCHANGED)
+    // ============================================
+
     function registerSeller() public {
         if (sellers[msg.sender]) revert SellerAlreadyRegistered();
         sellers[msg.sender] = true;
@@ -465,7 +663,8 @@ contract ReaLiFi is Ownable, ERC721URIStorage, ERC721Holder, ReentrancyGuard {
         emit FractionalAssetPurchased(tokenId, msg.sender, numTokens, totalPrice);
     }
 
-    function cancelFractionalAssetPurchase(uint256 tokenId, uint256 numTokens) public nonReentrant {
+   function cancelFractionalAssetPurchase(uint256 tokenId, uint256 numTokens) public nonReentrant {
+        if(buyerCanWithdraw[tokenId] == false) revert CannotWithdrawYet();
         if (buyerFractions[msg.sender][tokenId] == ZERO_AMOUNT) revert NoTokensOwned();
         if (buyerFractions[msg.sender][tokenId] < numTokens) revert NotEnoughTokensOwned();
 
@@ -652,5 +851,9 @@ contract ReaLiFi is Ownable, ERC721URIStorage, ERC721Holder, ReentrancyGuard {
         }
 
         return items;
+    }
+
+    function setBuyerCanWithdraw(uint256 tokenId, bool canWithdraw) public onlyAdmin {
+        buyerCanWithdraw[tokenId] = canWithdraw;
     }
 }
