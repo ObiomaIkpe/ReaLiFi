@@ -10,7 +10,6 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "./RealifiFractionalToken.sol";
 
 /// @title RealEstateDApp
-/// @author Therock Ani
 /// @notice A decentralized application for trading real estate assets as NFTs with fractional ownership and dividend distribution.
 contract ReaLiFi is Ownable, ERC721URIStorage, ERC721Holder, ReentrancyGuard {
     using SafeERC20 for IERC20;
