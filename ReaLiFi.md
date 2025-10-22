@@ -1,4 +1,4 @@
-    # ReaLiFi Smart Contract Documentation
+# ReaLiFi Smart Contract Documentation
 
 ## Overview
 
