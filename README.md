@@ -782,8 +782,9 @@ We welcome contributions! Please follow these guidelines:
 **Last Updated**: October 2025  
 **Contract Name**: ReaLiFi (RealifiAssetToken - RAT)
 
+
 Deployed Addresses
 
-ReaLiFiModule#MockUSDC - 0xfdE0f97F78A74E788E5Ea61e91D8cEAB396A5f95
-ReaLiFiModule#RealifiFractionalToken - 0xA53860Ff96067c0632fB498bf777807D8B55Da8a
-ReaLiFiModule#ReaLiFi - 0x356edA5558641C70E39fA4920B63d88Bcc12b1C2
+ReaLiFiModule#MockUSDC - 0x51502AB8d26D4283078E5fd0860c0a1ACC4082EA
+ReaLiFiModule#RealifiFractionalToken - 0xEf0762D6438577EeAEf72a8860aFd30185047B5B
+ReaLiFiModule#ReaLiFi - 0x8262dfA64c7fd013241CBAB524f2319b271F29AE
