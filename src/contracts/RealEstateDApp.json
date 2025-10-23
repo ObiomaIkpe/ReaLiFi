@@ -1,0 +1,1991 @@
+[
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_realEstateToken",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_usdcToken",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
+    "inputs": [],
+    "name": "AssetAlreadyPaid",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "AssetAlreadySold",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "AssetAlreadyVerified",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "AssetDoesNotExist",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "AssetNotPaid",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "AssetNotVerified",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "ContractNotApproved",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "FractionalAssetDoesNotExist",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "FractionalizedAssetWithBuyers",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InsufficientTokens",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InsufficientUSDCBalance",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidAmount",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidPrice",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidRecipient",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "NoTokensIssued",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "NoTokensOwned",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "name": "NotAdmin",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "NotBuyer",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "NotEnoughTokensOwned",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "SellerAlreadyRegistered",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "SellerNotOwner",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "SellerNotRegistered",
+    "type": "error"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "owner",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "approved",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
+      }
+    ],
+    "name": "Approval",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "owner",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "operator",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "approved",
+        "type": "bool"
+      }
+    ],
+    "name": "ApprovalForAll",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "buyer",
+        "type": "address"
+      }
+    ],
+    "name": "AssetCanceled",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "price",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "seller",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "verified",
+        "type": "bool"
+      }
+    ],
+    "name": "AssetCreated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "seller",
+        "type": "address"
+      }
+    ],
+    "name": "AssetDelisted",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "buyer",
+        "type": "address"
+      }
+    ],
+    "name": "AssetPaymentConfirmed",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "buyer",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "price",
+        "type": "uint256"
+      }
+    ],
+    "name": "AssetPurchased",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "seller",
+        "type": "address"
+      }
+    ],
+    "name": "AssetVerified",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "_fromTokenId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "_toTokenId",
+        "type": "uint256"
+      }
+    ],
+    "name": "BatchMetadataUpdate",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "totalTokens",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "pricePerToken",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "seller",
+        "type": "address"
+      }
+    ],
+    "name": "FractionalAssetCreated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "buyer",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "numTokens",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "totalPrice",
+        "type": "uint256"
+      }
+    ],
+    "name": "FractionalAssetPurchased",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "totalAmount",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "address[]",
+        "name": "buyers",
+        "type": "address[]"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256[]",
+        "name": "amounts",
+        "type": "uint256[]"
+      }
+    ],
+    "name": "FractionalDividendsDistributed",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "_tokenId",
+        "type": "uint256"
+      }
+    ],
+    "name": "MetadataUpdate",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "previousOwner",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "newOwner",
+        "type": "address"
+      }
+    ],
+    "name": "OwnershipTransferred",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "sellerAddress",
+        "type": "address"
+      }
+    ],
+    "name": "SellerRegistered",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "from",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "to",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
+      }
+    ],
+    "name": "Transfer",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "recipient",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "USDCWithdrawn",
+    "type": "event"
+  },
+  {
+    "inputs": [],
+    "name": "CANCELLATION_PENALTY_PERCENTAGE",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "LISTING_FEE_PERCENTAGE",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_admin",
+        "type": "address"
+      }
+    ],
+    "name": "addAdmin",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "to",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
+      }
+    ],
+    "name": "approve",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "owner",
+        "type": "address"
+      }
+    ],
+    "name": "balanceOf",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
+      }
+    ],
+    "name": "buyAsset",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "numTokens",
+        "type": "uint256"
+      }
+    ],
+    "name": "buyFractionalAsset",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
+      }
+    ],
+    "name": "cancelAssetPurchase",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "numTokens",
+        "type": "uint256"
+      }
+    ],
+    "name": "cancelFractionalAssetPurchase",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
+      }
+    ],
+    "name": "confirmAssetPayment",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "_tokenURI",
+        "type": "string"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_price",
+        "type": "uint256"
+      }
+    ],
+    "name": "createAsset",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "totalTokens",
+        "type": "uint256"
+      }
+    ],
+    "name": "createFractionalAsset",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
+      }
+    ],
+    "name": "delistAsset",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "distributeFractionalDividends",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "fetchAllAssetsWithDisplayInfo",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "tokenId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "price",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "seller",
+            "type": "address"
+          },
+          {
+            "internalType": "bool",
+            "name": "sold",
+            "type": "bool"
+          },
+          {
+            "internalType": "bool",
+            "name": "verified",
+            "type": "bool"
+          },
+          {
+            "internalType": "bool",
+            "name": "isPaidFor",
+            "type": "bool"
+          },
+          {
+            "internalType": "bool",
+            "name": "isCanceled",
+            "type": "bool"
+          },
+          {
+            "internalType": "address",
+            "name": "currentBuyer",
+            "type": "address"
+          },
+          {
+            "internalType": "string",
+            "name": "tokenURI",
+            "type": "string"
+          },
+          {
+            "internalType": "bool",
+            "name": "isFractionalized",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint256",
+            "name": "totalFractionalTokens",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "remainingFractionalTokens",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "pricePerFractionalToken",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "accumulatedFractionalPayments",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct ReaLiFi.AssetDisplayInfo[]",
+        "name": "",
+        "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "fetchAllListedAssets",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "tokenId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "price",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address payable",
+            "name": "seller",
+            "type": "address"
+          },
+          {
+            "internalType": "bool",
+            "name": "sold",
+            "type": "bool"
+          },
+          {
+            "internalType": "bool",
+            "name": "verified",
+            "type": "bool"
+          }
+        ],
+        "internalType": "struct ReaLiFi.RealEstateAsset[]",
+        "name": "",
+        "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
+      }
+    ],
+    "name": "fetchAsset",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "tokenId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "price",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address payable",
+            "name": "seller",
+            "type": "address"
+          },
+          {
+            "internalType": "bool",
+            "name": "sold",
+            "type": "bool"
+          },
+          {
+            "internalType": "bool",
+            "name": "verified",
+            "type": "bool"
+          }
+        ],
+        "internalType": "struct ReaLiFi.RealEstateAsset",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "fetchAvailableAssets",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "tokenId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "price",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "seller",
+            "type": "address"
+          },
+          {
+            "internalType": "bool",
+            "name": "sold",
+            "type": "bool"
+          },
+          {
+            "internalType": "bool",
+            "name": "verified",
+            "type": "bool"
+          },
+          {
+            "internalType": "bool",
+            "name": "isPaidFor",
+            "type": "bool"
+          },
+          {
+            "internalType": "bool",
+            "name": "isCanceled",
+            "type": "bool"
+          },
+          {
+            "internalType": "address",
+            "name": "currentBuyer",
+            "type": "address"
+          },
+          {
+            "internalType": "string",
+            "name": "tokenURI",
+            "type": "string"
+          },
+          {
+            "internalType": "bool",
+            "name": "isFractionalized",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint256",
+            "name": "totalFractionalTokens",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "remainingFractionalTokens",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "pricePerFractionalToken",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "accumulatedFractionalPayments",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct ReaLiFi.AssetDisplayInfo[]",
+        "name": "",
+        "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
+      }
+    ],
+    "name": "fetchFractionalAssetBuyers",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "buyer",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "numTokens",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "percentage",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct ReaLiFi.FractionalBuyer[]",
+        "name": "",
+        "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "fetchFractionalizedAssets",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "tokenId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "price",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "seller",
+            "type": "address"
+          },
+          {
+            "internalType": "bool",
+            "name": "sold",
+            "type": "bool"
+          },
+          {
+            "internalType": "bool",
+            "name": "verified",
+            "type": "bool"
+          },
+          {
+            "internalType": "bool",
+            "name": "isPaidFor",
+            "type": "bool"
+          },
+          {
+            "internalType": "bool",
+            "name": "isCanceled",
+            "type": "bool"
+          },
+          {
+            "internalType": "address",
+            "name": "currentBuyer",
+            "type": "address"
+          },
+          {
+            "internalType": "string",
+            "name": "tokenURI",
+            "type": "string"
+          },
+          {
+            "internalType": "bool",
+            "name": "isFractionalized",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint256",
+            "name": "totalFractionalTokens",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "remainingFractionalTokens",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "pricePerFractionalToken",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "accumulatedFractionalPayments",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct ReaLiFi.AssetDisplayInfo[]",
+        "name": "",
+        "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "fetchUnsoldAssets",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "tokenId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "price",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address payable",
+            "name": "seller",
+            "type": "address"
+          },
+          {
+            "internalType": "bool",
+            "name": "sold",
+            "type": "bool"
+          },
+          {
+            "internalType": "bool",
+            "name": "verified",
+            "type": "bool"
+          }
+        ],
+        "internalType": "struct ReaLiFi.RealEstateAsset[]",
+        "name": "",
+        "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "fractionalAssets",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "totalTokens",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "pricePerToken",
+        "type": "uint256"
+      },
+      {
+        "internalType": "address payable",
+        "name": "seller",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
+      }
+    ],
+    "name": "getApproved",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
+      }
+    ],
+    "name": "getAssetBuyer",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
+      }
+    ],
+    "name": "getAssetDisplayInfo",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "tokenId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "price",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "seller",
+            "type": "address"
+          },
+          {
+            "internalType": "bool",
+            "name": "sold",
+            "type": "bool"
+          },
+          {
+            "internalType": "bool",
+            "name": "verified",
+            "type": "bool"
+          },
+          {
+            "internalType": "bool",
+            "name": "isPaidFor",
+            "type": "bool"
+          },
+          {
+            "internalType": "bool",
+            "name": "isCanceled",
+            "type": "bool"
+          },
+          {
+            "internalType": "address",
+            "name": "currentBuyer",
+            "type": "address"
+          },
+          {
+            "internalType": "string",
+            "name": "tokenURI",
+            "type": "string"
+          },
+          {
+            "internalType": "bool",
+            "name": "isFractionalized",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint256",
+            "name": "totalFractionalTokens",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "remainingFractionalTokens",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "pricePerFractionalToken",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "accumulatedFractionalPayments",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct ReaLiFi.AssetDisplayInfo",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "buyer",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
+      }
+    ],
+    "name": "getBuyerFractions",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "buyer",
+        "type": "address"
+      }
+    ],
+    "name": "getBuyerPortfolio",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "tokenId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "fractionalTokensOwned",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "ownershipPercentage",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "investmentValue",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct ReaLiFi.BuyerPortfolio[]",
+        "name": "",
+        "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
+      }
+    ],
+    "name": "getFractionalAssetBuyersList",
+    "outputs": [
+      {
+        "internalType": "address[]",
+        "name": "",
+        "type": "address[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
+      }
+    ],
+    "name": "getFractionalPayments",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "seller",
+        "type": "address"
+      }
+    ],
+    "name": "getSellerAssets",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "tokenId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "price",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "seller",
+            "type": "address"
+          },
+          {
+            "internalType": "bool",
+            "name": "sold",
+            "type": "bool"
+          },
+          {
+            "internalType": "bool",
+            "name": "verified",
+            "type": "bool"
+          },
+          {
+            "internalType": "bool",
+            "name": "isPaidFor",
+            "type": "bool"
+          },
+          {
+            "internalType": "bool",
+            "name": "isCanceled",
+            "type": "bool"
+          },
+          {
+            "internalType": "address",
+            "name": "currentBuyer",
+            "type": "address"
+          },
+          {
+            "internalType": "string",
+            "name": "tokenURI",
+            "type": "string"
+          },
+          {
+            "internalType": "bool",
+            "name": "isFractionalized",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint256",
+            "name": "totalFractionalTokens",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "remainingFractionalTokens",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "pricePerFractionalToken",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "accumulatedFractionalPayments",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct ReaLiFi.AssetDisplayInfo[]",
+        "name": "",
+        "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "sellerAddress",
+        "type": "address"
+      }
+    ],
+    "name": "getSellerMetrics",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "confirmed",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "canceled",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "name": "isAdmin",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "owner",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "operator",
+        "type": "address"
+      }
+    ],
+    "name": "isApprovedForAll",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
+      }
+    ],
+    "name": "isAssetCanceled",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
+      }
+    ],
+    "name": "isAssetPaidFor",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "name",
+    "outputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bytes",
+        "name": "",
+        "type": "bytes"
+      }
+    ],
+    "name": "onERC721Received",
+    "outputs": [
+      {
+        "internalType": "bytes4",
+        "name": "",
+        "type": "bytes4"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "owner",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
+      }
+    ],
+    "name": "ownerOf",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "realEstateAssets",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "price",
+        "type": "uint256"
+      },
+      {
+        "internalType": "address payable",
+        "name": "seller",
+        "type": "address"
+      },
+      {
+        "internalType": "bool",
+        "name": "sold",
+        "type": "bool"
+      },
+      {
+        "internalType": "bool",
+        "name": "verified",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "realEstateToken",
+    "outputs": [
+      {
+        "internalType": "contract RealifiFractionalToken",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "registerSeller",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_admin",
+        "type": "address"
+      }
+    ],
+    "name": "removeAdmin",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "renounceOwnership",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "from",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "to",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
+      }
+    ],
+    "name": "safeTransferFrom",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "from",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "to",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bytes",
+        "name": "data",
+        "type": "bytes"
+      }
+    ],
+    "name": "safeTransferFrom",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "name": "sellers",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "operator",
+        "type": "address"
+      },
+      {
+        "internalType": "bool",
+        "name": "approved",
+        "type": "bool"
+      }
+    ],
+    "name": "setApprovalForAll",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes4",
+        "name": "interfaceId",
+        "type": "bytes4"
+      }
+    ],
+    "name": "supportsInterface",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "symbol",
+    "outputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
+      }
+    ],
+    "name": "tokenURI",
+    "outputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "from",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "to",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
+      }
+    ],
+    "name": "transferFrom",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "newOwner",
+        "type": "address"
+      }
+    ],
+    "name": "transferOwnership",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "usdcToken",
+    "outputs": [
+      {
+        "internalType": "contract IERC20",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
+      }
+    ],
+    "name": "verifyAsset",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "recipient",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "withdrawUSDC",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
+]
