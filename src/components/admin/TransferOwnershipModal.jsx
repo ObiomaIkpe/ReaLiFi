@@ -14,26 +14,18 @@ export function TransferOwnershipModal({ contractAddress, isOpen, onClose, onSuc
       setNewOwnerAddress('');
       setLocalError('');
       onSuccess?.();
+      onClose?.();
     }
-  }, [isSuccess, onSuccess]);
+  }, [isSuccess, onSuccess, onClose]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
     setLocalError('');
 
-    if (!newOwnerAddress.trim()) {
-      setLocalError('Please enter a new owner address');
-      return;
-    }
-
-    if (!isAddress(newOwnerAddress)) {
-      setLocalError('Invalid Ethereum address');
-      return;
-    }
-
+    if (!newOwnerAddress.trim()) return setLocalError('Please enter a new owner address');
+    if (!isAddress(newOwnerAddress)) return setLocalError('Invalid Ethereum address');
     if (newOwnerAddress.toLowerCase() === userAddress?.toLowerCase()) {
-      setLocalError('New owner cannot be the current owner');
-      return;
+      return setLocalError('New owner cannot be the current owner');
     }
 
     transferOwnership(newOwnerAddress);
@@ -46,7 +38,7 @@ export function TransferOwnershipModal({ contractAddress, isOpen, onClose, onSuc
       <div className="bg-section rounded-xl p-6 w-full max-w-md border border-border">
         <h2 className="text-xl font-semibold text-text-primary mb-2">Transfer Ownership</h2>
         <p className="text-text-subtle text-sm mb-4">This action cannot be undone. Proceed with caution.</p>
-        
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm text-text-subtle mb-2">New Owner Address</label>

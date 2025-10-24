@@ -9,14 +9,13 @@ export function RenounceOwnershipModal({ contractAddress, isOpen, onClose, onSuc
     if (isSuccess) {
       setConfirmed(false);
       onSuccess?.();
+      onClose?.();
     }
-  }, [isSuccess, onSuccess]);
+  }, [isSuccess, onSuccess, onClose]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (confirmed) {
-      renounceOwnership();
-    }
+    if (confirmed) renounceOwnership();
   };
 
   if (!isOpen) return null;
@@ -25,8 +24,10 @@ export function RenounceOwnershipModal({ contractAddress, isOpen, onClose, onSuc
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-section rounded-xl p-6 w-full max-w-md border border-border">
         <h2 className="text-xl font-semibold text-text-primary mb-2">Renounce Ownership</h2>
-        <p className="text-text-subtle text-sm mb-4">This will permanently remove your ownership of the contract. This action cannot be undone.</p>
-        
+        <p className="text-text-subtle text-sm mb-4">
+          This will permanently remove your ownership of the contract. This action cannot be undone.
+        </p>
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="bg-red-500 bg-opacity-10 border border-red-500 rounded-xl p-3">
             <p className="text-red-400 text-sm">⚠️ Warning: The contract will have no owner after this action.</p>

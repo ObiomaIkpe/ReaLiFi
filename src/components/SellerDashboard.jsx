@@ -1,5 +1,4 @@
-// src/components/SellerDashboard.tsx
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useReadContract, useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { REAL_ESTATE_DAPP_ADDRESS, REAL_ESTATE_DAPP } from '../config/contract.config';
 import { formatUnits } from 'viem';
@@ -12,7 +11,7 @@ export function SellerDashboard() {
   const [selectedAsset, setSelectedAsset] = useState(null);
 
   // Check if user is a registered seller
-  const { data: isSeller } = useReadContract({
+  const { data: isSeller, isLoading: checkingSellerStatus, refetch: refetchSellerStatus } = useReadContract({
     address: REAL_ESTATE_DAPP_ADDRESS,
     abi: REAL_ESTATE_DAPP,
     functionName: 'sellers',
@@ -25,6 +24,7 @@ export function SellerDashboard() {
     abi: REAL_ESTATE_DAPP,
     functionName: 'getSellerAssets',
     args: address ? [address] : undefined,
+    enabled: !!address && !!isSeller,
   });
 
   // Get seller metrics
@@ -33,6 +33,7 @@ export function SellerDashboard() {
     abi: REAL_ESTATE_DAPP,
     functionName: 'getSellerMetrics',
     args: address ? [address] : undefined,
+    enabled: !!address && !!isSeller,
   });
 
   // Transaction handling
@@ -41,6 +42,19 @@ export function SellerDashboard() {
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
     hash,
   });
+
+  const handleRegisterSeller = async () => {
+    try {
+      writeContract({
+        address: REAL_ESTATE_DAPP_ADDRESS,
+        abi: REAL_ESTATE_DAPP,
+        functionName: 'registerSeller',
+        args: [],
+      });
+    } catch (err) {
+      console.error('Error registering seller:', err);
+    }
+  };
 
   const handleDelistClick = (asset) => {
     setSelectedAsset(asset);
@@ -89,16 +103,27 @@ export function SellerDashboard() {
   };
 
   // Reset state and refetch when transaction succeeds
-  if (isSuccess && actionTokenId) {
-    setTimeout(() => {
-      setActionTokenId(null);
-      setActionType(null);
-      setShowConfirmModal(false);
-      setSelectedAsset(null);
-      refetch();
-    }, 2000);
-  }
+  useEffect(() => {
+    if (isSuccess && actionTokenId) {
+      const timer = setTimeout(() => {
+        setActionTokenId(null);
+        setActionType(null);
+        setShowConfirmModal(false);
+        setSelectedAsset(null);
+        refetch();
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [isSuccess, actionTokenId, refetch]);
 
+  // Refetch seller status after successful registration
+  useEffect(() => {
+    if (isSuccess && !isSeller) {
+      refetchSellerStatus();
+    }
+  }, [isSuccess, isSeller, refetchSellerStatus]);
+
+  // Wallet not connected state
   if (!isConnected) {
     return (
       <div style={{
@@ -129,6 +154,25 @@ export function SellerDashboard() {
     );
   }
 
+  // Checking seller status
+  if (checkingSellerStatus) {
+    return (
+      <div style={{
+        backgroundColor: '#121317',
+        minHeight: '100vh',
+        padding: '40px 20px',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+      }}>
+        <div style={{ color: '#E1E2E2', fontSize: '18px' }}>
+          Checking seller status...
+        </div>
+      </div>
+    );
+  }
+
+  // Not a registered seller - show registration
   if (!isSeller) {
     return (
       <div style={{
@@ -141,38 +185,115 @@ export function SellerDashboard() {
       }}>
         <div style={{
           backgroundColor: '#111216',
-          border: '1px solid #2C2C2C',
+          border: '1px solid #CAAB5B',
           borderRadius: '12px',
           padding: '40px',
           textAlign: 'center',
-          maxWidth: '400px',
+          maxWidth: '500px',
+          width: '100%',
         }}>
-          <div style={{ fontSize: '48px', marginBottom: '16px' }}>🏠</div>
-          <div style={{ color: '#E1E2E2', fontSize: '18px', marginBottom: '8px' }}>
+          <div style={{ fontSize: '64px', marginBottom: '24px' }}>🏠</div>
+          <div style={{ color: '#CAAB5B', fontSize: '24px', fontWeight: 'bold', marginBottom: '12px' }}>
+            Seller Registration Required
+          </div>
+          <div style={{ color: '#E1E2E2', fontSize: '16px', marginBottom: '8px' }}>
             Not a Registered Seller
           </div>
-          <div style={{ color: '#6D6041', fontSize: '14px', marginBottom: '24px' }}>
-            You need to register as a seller to access this dashboard
+          <div style={{ color: '#6D6041', fontSize: '14px', marginBottom: '32px', lineHeight: '1.6' }}>
+            You need to register as a seller before you can create and list assets on the platform. 
+            This is a one-time registration process.
           </div>
+
+          {/* Transaction Status */}
+          {hash && (
+            <div style={{
+              marginBottom: '24px',
+              padding: '16px',
+              backgroundColor: '#121317',
+              border: '1px solid #2C2C2C',
+              borderRadius: '12px',
+              textAlign: 'left',
+            }}>
+              {isPending && (
+                <div style={{ color: '#CAAB5B', marginBottom: '8px', fontWeight: 'bold' }}>
+                  ⏳ Waiting for confirmation...
+                </div>
+              )}
+              {isConfirming && (
+                <div style={{ color: '#CAAB5B', marginBottom: '8px', fontWeight: 'bold' }}>
+                  ⏳ Registering...
+                </div>
+              )}
+              {isSuccess && (
+                <div style={{ color: '#4CAF50', marginBottom: '8px', fontWeight: 'bold' }}>
+                  ✓ Successfully registered as seller!
+                </div>
+              )}
+              <div style={{ color: '#6D6041', fontSize: '12px', marginBottom: '4px' }}>
+                Transaction Hash:
+              </div>
+              <div style={{
+                color: '#E1E2E2',
+                fontSize: '11px',
+                fontFamily: 'monospace',
+                wordBreak: 'break-all',
+              }}>
+                {hash}
+              </div>
+            </div>
+          )}
+
+          {error && (
+            <div style={{
+              marginBottom: '24px',
+              padding: '16px',
+              backgroundColor: '#f44336',
+              borderRadius: '12px',
+              color: '#fff',
+              fontSize: '14px',
+            }}>
+              Error: {error.message}
+            </div>
+          )}
+
           <button
+            onClick={handleRegisterSeller}
+            disabled={isPending || isConfirming}
             style={{
-              padding: '12px 24px',
-              backgroundColor: '#CAAB5B',
-              color: '#121317',
+              width: '100%',
+              padding: '16px 24px',
+              backgroundColor: isPending || isConfirming ? '#2C2C2C' : '#CAAB5B',
+              color: isPending || isConfirming ? '#6D6041' : '#121317',
               border: 'none',
               borderRadius: '8px',
-              fontSize: '14px',
+              fontSize: '16px',
               fontWeight: 'bold',
-              cursor: 'pointer',
+              cursor: isPending || isConfirming ? 'not-allowed' : 'pointer',
+              transition: 'opacity 0.2s',
+            }}
+            onMouseEnter={(e) => {
+              if (!isPending && !isConfirming) e.currentTarget.style.opacity = '0.9';
+            }}
+            onMouseLeave={(e) => {
+              if (!isPending && !isConfirming) e.currentTarget.style.opacity = '1';
             }}
           >
-            Register as Seller
+            {isPending ? 'Waiting for confirmation...' : 
+             isConfirming ? 'Registering...' : 
+             'Register as Seller'}
           </button>
+          
+          {(isPending || isConfirming) && (
+            <div style={{ color: '#6D6041', fontSize: '12px', marginTop: '12px' }}>
+              Please confirm the transaction in your wallet
+            </div>
+          )}
         </div>
       </div>
     );
   }
 
+  // Loading assets
   if (isLoading) {
     return (
       <div style={{
@@ -190,6 +311,7 @@ export function SellerDashboard() {
     );
   }
 
+  // Error loading assets
   if (isError) {
     return (
       <div style={{

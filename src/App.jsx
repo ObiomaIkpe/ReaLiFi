@@ -9,6 +9,7 @@ import { Toaster } from "react-hot-toast";
 import AssetsPage from "./pages/AssetsPage";
 import MarketplacePage from "./pages/MarketPlacePage";
 import { BuyerDashboard } from "./components/BuyerDashboard";
+import { SellerDashboard } from "./components/SellerDashboard";
 
 function App() {
   return (
@@ -21,6 +22,7 @@ function App() {
          <Route path="/" element={<div className="text-center text-text-primary mt-10"><HomePage /></div>} />
           <Route path="/upload" element={<MultiStepForm />} />
           <Route path="/assets" element={<AssetsPage />} />
+          <Route path="/seller-dashboard" element={<SellerDashboard />} />
           <Route path="/buyer-dashboard" element={<BuyerDashboard />} />
           <Route path="/market-place" element={<MarketplacePage />} />
           <Route path="/asset/:propertyId" element={<PropertyDetailsPage />} />

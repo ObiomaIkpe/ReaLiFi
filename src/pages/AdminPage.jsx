@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { useAccount } from 'wagmi';
-import { AddAdminModal } from '@/components/AdminModal';
-import { RemoveAdminModal } from '../components/RemoveAdminModal';
-import { TransferOwnershipModal } from '../components/TransferOwnershipModal';
-import { RenounceOwnershipModal } from '../components/RenounceOwnershipModal';
+import { AddAdminModal } from '@/components/admin/AddAdminModal';
+import { RemoveAdminModal } from '../components/admin/RemoveAdminModal';
+import { TransferOwnershipModal } from '../components/admin/TransferOwnershipModal';
+import { RenounceOwnershipModal } from '../components/admin/RenounceOwnershipModal';
 
-const REALIFI_CONTRACT_ADDRESS = '0x356edA5558641C70E39fA4920B63d88Bcc12b1C2';
+const REALIFI_CONTRACT_ADDRESS = '0x8262dfA64c7fd013241CBAB524f2319b271F29AE';
 
 export default function AdminControlPanel() {
   const { address, isConnected } = useAccount();

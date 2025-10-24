@@ -1,7 +1,6 @@
-// src/components/AdminAssetPanel.tsx
 import { useState, useEffect } from 'react';
 import { useReadContract, useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
-import { REAL_ESTATE_DAPP_ADDRESS, REAL_ESTATE_DAPP } from '../config/contract.config';
+import { REAL_ESTATE_DAPP_ADDRESS, REAL_ESTATE_DAPP } from '../../config/contract.config';
 import { formatUnits } from 'viem';
 
 export function AdminAssetPanel() {

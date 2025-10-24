@@ -1,4 +1,4 @@
-import { AdminAssetPanel } from '@/components/AdminAssetPanel';
+import { AdminAssetPanel } from '@/components/admin/AdminAssetPanel';
 import { AssetList } from '../components/AssetList';
 
 export default function AssetsPage() {

@@ -1,171 +1,151 @@
-import { useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
-import { useCallback, useState, useEffect } from 'react';
-import { parseAbi, isAddress } from 'viem';
-import { REAL_ESTATE_DAPP } from '@/config/contract.config';
+// hooks/useAdminActions.js
+import { useCallback, useEffect, useState } from 'react';
+import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { getAddress, isAddress } from 'viem';
+import { REAL_ESTATE_DAPP } from '@/config/contract.config'; // adjust path
 
+function normalizeAddress(maybeAddress) {
+  if (!maybeAddress) return null;
+  try {
+    return getAddress(maybeAddress.trim());
+  } catch (e) {
+    return null;
+  }
+}
 
+function useWriteFlow(contractAddress, fnName) {
+  // A wrapper to track write + receipt
+  const [localError, setLocalError] = useState(null);
+  const { writeContract, data: hash, isLoading: isWriteLoading, error: writeError } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess, isError: isReceiptError, error: receiptError } = useWaitForTransactionReceipt({ hash });
 
-export function useAddAdmin(contractAddress) {
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const { writeContract, data: hash } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
-    hash,
-  });
+  // combined isLoading and error
+  const isLoading = Boolean(isWriteLoading || isConfirming);
+  const error = writeError?.message || receiptError?.message || localError || null;
 
-  const addAdmin = useCallback(
-    async (adminAddress) => {
-      if (!adminAddress || !contractAddress) {
-        setError('Missing required parameters');
+  useEffect(() => {
+    // propagate underlying errors to localError for UI
+    if (writeError) setLocalError(writeError.message);
+    else if (receiptError) setLocalError(receiptError.message);
+  }, [writeError, receiptError]);
+
+  const call = useCallback(
+    async (args = []) => {
+      setLocalError(null);
+
+      if (!contractAddress) {
+        setLocalError('Contract address is required');
         return;
       }
 
       try {
-        setError(null);
-        setIsLoading(true);
-        
+        // do not await writeContract (wagmi returns immediate)
         writeContract({
           address: contractAddress,
           abi: REAL_ESTATE_DAPP,
-          functionName: 'addAdmin',
-          args: [adminAddress],
+          functionName: fnName,
+          args,
         });
       } catch (err) {
-        setError(err.message || 'Failed to add admin');
-        setIsLoading(false);
+        // defensive: some implementations may throw synchronously
+        setLocalError(err?.message || 'Failed to submit transaction');
       }
     },
-    [writeContract, contractAddress]
+    [writeContract, contractAddress, fnName]
+  );
+
+  return {
+    call,
+    hash,
+    isLoading,
+    isSuccess,
+    error,
+  };
+}
+
+export function useAddAdmin(contractAddress) {
+  const flow = useWriteFlow(contractAddress, 'addAdmin');
+
+  const addAdmin = useCallback(
+    async (rawAdminAddress) => {
+      const clean = normalizeAddress(rawAdminAddress);
+      if (!clean) {
+        // return early and set local error via flow? set here:
+        return Promise.resolve({ ok: false, error: 'Invalid address' });
+      }
+      // call returns immediately; the hook exposes isLoading/isSuccess
+      flow.call([clean]);
+      return Promise.resolve({ ok: true });
+    },
+    [flow]
   );
 
   return {
     addAdmin,
-    isLoading: isLoading || isConfirming,
-    isSuccess,
-    error,
-    hash,
+    hash: flow.hash,
+    isLoading: flow.isLoading,
+    isSuccess: flow.isSuccess,
+    error: flow.error,
   };
 }
 
 export function useRemoveAdmin(contractAddress) {
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const { writeContract, data: hash } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
-    hash,
-  });
+  const flow = useWriteFlow(contractAddress, 'removeAdmin');
 
   const removeAdmin = useCallback(
-    async (adminAddress) => {
-      if (!adminAddress || !contractAddress) {
-        setError('Missing required parameters');
-        return;
-      }
-
-      try {
-        setError(null);
-        setIsLoading(true);
-        
-        writeContract({
-          address: contractAddress,
-          abi: REALIFI_ABI,
-          functionName: 'removeAdmin',
-          args: [adminAddress],
-        });
-      } catch (err) {
-        setError(err.message || 'Failed to remove admin');
-        setIsLoading(false);
-      }
+    async (rawAdminAddress) => {
+      const clean = normalizeAddress(rawAdminAddress);
+      if (!clean) return Promise.resolve({ ok: false, error: 'Invalid address' });
+      flow.call([clean]);
+      return Promise.resolve({ ok: true });
     },
-    [writeContract, contractAddress]
+    [flow]
   );
 
   return {
     removeAdmin,
-    isLoading: isLoading || isConfirming,
-    isSuccess,
-    error,
-    hash,
+    hash: flow.hash,
+    isLoading: flow.isLoading,
+    isSuccess: flow.isSuccess,
+    error: flow.error,
   };
 }
 
 export function useTransferOwnership(contractAddress) {
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const { writeContract, data: hash } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
-    hash,
-  });
+  const flow = useWriteFlow(contractAddress, 'transferOwnership');
 
   const transferOwnership = useCallback(
-    async (newOwnerAddress) => {
-      if (!newOwnerAddress || !contractAddress) {
-        setError('Missing required parameters');
-        return;
-      }
-
-      try {
-        setError(null);
-        setIsLoading(true);
-        
-        writeContract({
-          address: contractAddress,
-          abi: REALIFI_ABI,
-          functionName: 'transferOwnership',
-          args: [newOwnerAddress],
-        });
-      } catch (err) {
-        setError(err.message || 'Failed to transfer ownership');
-        setIsLoading(false);
-      }
+    async (rawNewOwner) => {
+      const clean = normalizeAddress(rawNewOwner);
+      if (!clean) return Promise.resolve({ ok: false, error: 'Invalid address' });
+      flow.call([clean]);
+      return Promise.resolve({ ok: true });
     },
-    [writeContract, contractAddress]
+    [flow]
   );
 
   return {
     transferOwnership,
-    isLoading: isLoading || isConfirming,
-    isSuccess,
-    error,
-    hash,
+    hash: flow.hash,
+    isLoading: flow.isLoading,
+    isSuccess: flow.isSuccess,
+    error: flow.error,
   };
 }
 
 export function useRenounceOwnership(contractAddress) {
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const { writeContract, data: hash } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
-    hash,
-  });
+  const flow = useWriteFlow(contractAddress, 'renounceOwnership');
 
   const renounceOwnership = useCallback(async () => {
-    if (!contractAddress) {
-      setError('Contract address is required');
-      return;
-    }
-
-    try {
-      setError(null);
-      setIsLoading(true);
-      
-      writeContract({
-        address: contractAddress,
-        abi: REALIFI_ABI,
-        functionName: 'renounceOwnership',
-        args: [],
-      });
-    } catch (err) {
-      setError(err.message || 'Failed to renounce ownership');
-      setIsLoading(false);
-    }
-  }, [writeContract, contractAddress]);
+    flow.call([]); // no args
+    return Promise.resolve({ ok: true });
+  }, [flow]);
 
   return {
     renounceOwnership,
-    isLoading: isLoading || isConfirming,
-    isSuccess,
-    error,
-    hash,
+    hash: flow.hash,
+    isLoading: flow.isLoading,
+    isSuccess: flow.isSuccess,
+    error: flow.error,
   };
 }

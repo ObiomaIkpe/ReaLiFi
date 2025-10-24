@@ -64,7 +64,7 @@ export default function HomePage() {
           </div>
 
           <div className="pt-8">
-            <a href="/register-seller">
+            <a href="/seller-dashboard">
               <button className="px-10 py-4 bg-[#CAAB5B] text-[#121317] rounded-lg font-semibold text-lg hover:bg-[#b89a4f] transition-colors">
                 Become a Seller
               </button>
