@@ -785,6 +785,6 @@ We welcome contributions! Please follow these guidelines:
 
 Deployed Addresses
 
-ReaLiFiModule#MockUSDC - 0x58738EEa382E0d6EA776C5110Cd11cb9C4Aa7140
-ReaLiFiModule#RealifiFractionalToken - 0x543F4D587EBE758470b461d3adC0954C6c71f111
-ReaLiFiModule#ReaLiFi - 0xd1a4710C80A22eBfcc531c888ecFc9f402529f6F
+- ReaLiFiModule#MockUSDC - 0x58738EEa382E0d6EA776C5110Cd11cb9C4Aa7140
+- ReaLiFiModule#RealifiFractionalToken - 0x543F4D587EBE758470b461d3adC0954C6c71f111
+- ReaLiFiModule#ReaLiFi - 0xd1a4710C80A22eBfcc531c888ecFc9f402529f6F
