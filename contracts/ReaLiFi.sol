@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+ // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.28;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -10,6 +10,7 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "./RealifiFractionalToken.sol";
 
 /// @title RealEstateDApp
+/// @author Tech Scorpion
 /// @notice A decentralized application for trading real estate assets as NFTs with fractional ownership and dividend distribution.
 contract ReaLiFi is Ownable, ERC721URIStorage, ERC721Holder, ReentrancyGuard {
     using SafeERC20 for IERC20;
@@ -135,6 +136,8 @@ contract ReaLiFi is Ownable, ERC721URIStorage, ERC721Holder, ReentrancyGuard {
     error NotShareSeller();
     error CannotBuyOwnShares();
     error CannotWithdrawYet();
+    error AdminAlreadyExists();
+    error AdminDoesNotExist();
 
     // --- Events ---
     event AssetCreated(uint256 indexed tokenId, uint256 price, address indexed seller, bool verified);
@@ -552,10 +555,12 @@ contract ReaLiFi is Ownable, ERC721URIStorage, ERC721Holder, ReentrancyGuard {
     }
 
     function addAdmin(address _admin) onlyOwner external {
+        if (isAdmin[_admin]) revert AdminAlreadyExists();
         isAdmin[_admin] = true;
     }
 
     function removeAdmin(address _admin) onlyOwner external {
+        if (!isAdmin[_admin]) revert AdminDoesNotExist();
         isAdmin[_admin] = false;
     }
 
