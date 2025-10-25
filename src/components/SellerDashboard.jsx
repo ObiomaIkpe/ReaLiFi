@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+// src/components/SellerDashboard.tsx
+import { useState } from 'react';
 import { useReadContract, useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
-import { REAL_ESTATE_DAPP_ADDRESS, REAL_ESTATE_DAPP } from '../config/contract.config';
-import { formatUnits } from 'viem';
+import { REAL_ESTATE_DAPP, REAL_ESTATE_DAPP_ADDRESS } from '../config/contract.config';
+import { formatUnits, parseUnits } from 'viem';
 
 export function SellerDashboard() {
   const { address, isConnected } = useAccount();
@@ -9,9 +10,17 @@ export function SellerDashboard() {
   const [actionType, setActionType] = useState(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState(null);
+  const [isRegistering, setIsRegistering] = useState(false);
+
+  
+  // Fractionalization inputs
+  const [totalTokens, setTotalTokens] = useState('100');
+  
+  // Dividend inputs
+  const [dividendAmount, setDividendAmount] = useState('');
 
   // Check if user is a registered seller
-  const { data: isSeller, isLoading: checkingSellerStatus, refetch: refetchSellerStatus } = useReadContract({
+  const { data: isSeller } = useReadContract({
     address: REAL_ESTATE_DAPP_ADDRESS,
     abi: REAL_ESTATE_DAPP,
     functionName: 'sellers',
@@ -24,7 +33,6 @@ export function SellerDashboard() {
     abi: REAL_ESTATE_DAPP,
     functionName: 'getSellerAssets',
     args: address ? [address] : undefined,
-    enabled: !!address && !!isSeller,
   });
 
   // Get seller metrics
@@ -33,7 +41,6 @@ export function SellerDashboard() {
     abi: REAL_ESTATE_DAPP,
     functionName: 'getSellerMetrics',
     args: address ? [address] : undefined,
-    enabled: !!address && !!isSeller,
   });
 
   // Transaction handling
@@ -42,19 +49,6 @@ export function SellerDashboard() {
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
     hash,
   });
-
-  const handleRegisterSeller = async () => {
-    try {
-      writeContract({
-        address: REAL_ESTATE_DAPP_ADDRESS,
-        abi: REAL_ESTATE_DAPP,
-        functionName: 'registerSeller',
-        args: [],
-      });
-    } catch (err) {
-      console.error('Error registering seller:', err);
-    }
-  };
 
   const handleDelistClick = (asset) => {
     setSelectedAsset(asset);
@@ -65,6 +59,18 @@ export function SellerDashboard() {
   const handleConfirmPaymentClick = (asset) => {
     setSelectedAsset(asset);
     setActionType('confirm');
+    setShowConfirmModal(true);
+  };
+
+  const handleFractionalizeClick = (asset) => {
+    setSelectedAsset(asset);
+    setActionType('fractionalize');
+    setShowConfirmModal(true);
+  };
+
+  const handleDividendClick = (asset) => {
+    setSelectedAsset(asset);
+    setActionType('dividend');
     setShowConfirmModal(true);
   };
 
@@ -102,28 +108,199 @@ export function SellerDashboard() {
     }
   };
 
+  const handleFractionalizeAsset = async () => {
+    if (!selectedAsset || !totalTokens) return;
+
+    try {
+      setActionTokenId(selectedAsset.tokenId);
+      writeContract({
+        address: REAL_ESTATE_DAPP_ADDRESS,
+        abi: REAL_ESTATE_DAPP,
+        functionName: 'createFractionalAsset',
+        args: [selectedAsset.tokenId, BigInt(totalTokens)],
+      });
+    } catch (err) {
+      console.error('Error fractionalizing asset:', err);
+      setActionTokenId(null);
+    }
+  };
+
+  const handleDistributeDividend = async () => {
+    if (!selectedAsset || !dividendAmount) return;
+
+    try {
+      setActionTokenId(selectedAsset.tokenId);
+      writeContract({
+        address: REAL_ESTATE_DAPP_ADDRESS,
+        abi: REAL_ESTATE_DAPP,
+        functionName: 'distributeFractionalDividends',
+        args: [selectedAsset.tokenId, parseUnits(dividendAmount, 6)], // USDC has 6 decimals
+      });
+    } catch (err) {
+      console.error('Error distributing dividend:', err);
+      setActionTokenId(null);
+    }
+  };
+
   // Reset state and refetch when transaction succeeds
-  useEffect(() => {
-    if (isSuccess && actionTokenId) {
-      const timer = setTimeout(() => {
-        setActionTokenId(null);
-        setActionType(null);
-        setShowConfirmModal(false);
-        setSelectedAsset(null);
-        refetch();
-      }, 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [isSuccess, actionTokenId, refetch]);
+  if (isSuccess && actionTokenId) {
+    setTimeout(() => {
+      setActionTokenId(null);
+      setActionType(null);
+      setShowConfirmModal(false);
+      setSelectedAsset(null);
+      setTotalTokens('100');
+      setDividendAmount('');
+      refetch();
+    }, 2000);
+  }
 
-  // Refetch seller status after successful registration
-  useEffect(() => {
-    if (isSuccess && !isSeller) {
-      refetchSellerStatus();
-    }
-  }, [isSuccess, isSeller, refetchSellerStatus]);
+  const { 
+  data: registerHash, 
+  writeContract: registerSeller, 
+  isPending: isRegisterPending 
+} = useWriteContract();
 
-  // Wallet not connected state
+const { 
+  isLoading: isRegisterConfirming, 
+  isSuccess: isRegisterSuccess 
+} = useWaitForTransactionReceipt({
+  hash: registerHash,
+});
+
+// Add registration handler
+const handleRegisterSeller = async () => {
+  try {
+    setIsRegistering(true);
+    registerSeller({
+      address: REAL_ESTATE_DAPP_ADDRESS,
+      abi: REAL_ESTATE_DAPP,
+      functionName: 'registerSeller',
+    });
+  } catch (err) {
+    console.error('Error registering as seller:', err);
+    setIsRegistering(false);
+  }
+};
+
+// Refetch seller status when registration succeeds
+if (isRegisterSuccess) {
+  setTimeout(() => {
+    setIsRegistering(false);
+    window.location.reload(); // Reload to update seller status
+  }, 2000);
+}
+
+// Update the "Not a Registered Seller" section
+if (!isSeller) {
+  return (
+    <div style={{
+      backgroundColor: '#121317',
+      minHeight: '100vh',
+      padding: '40px 20px',
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+    }}>
+      <div style={{
+        backgroundColor: '#111216',
+        border: '1px solid #2C2C2C',
+        borderRadius: '12px',
+        padding: '40px',
+        textAlign: 'center',
+        maxWidth: '500px',
+      }}>
+        <div style={{ fontSize: '48px', marginBottom: '16px' }}>🏠</div>
+        <div style={{ color: '#E1E2E2', fontSize: '18px', marginBottom: '8px' }}>
+          Not a Registered Seller
+        </div>
+        <div style={{ color: '#6D6041', fontSize: '14px', marginBottom: '24px' }}>
+          You need to register as a seller to access this dashboard and list your real estate assets
+        </div>
+
+        {/* Transaction Status for Registration */}
+        {registerHash && (
+          <div style={{
+            marginBottom: '24px',
+            padding: '16px',
+            backgroundColor: '#121317',
+            border: '1px solid #2C2C2C',
+            borderRadius: '12px',
+            textAlign: 'left'
+          }}>
+            {isRegisterConfirming && (
+              <div style={{ color: '#CAAB5B', marginBottom: '8px', fontWeight: 'bold' }}>
+                ⏳ Registration confirming...
+              </div>
+            )}
+            {isRegisterSuccess && (
+              <div style={{ color: '#4CAF50', marginBottom: '8px', fontWeight: 'bold' }}>
+                ✓ Registration successful! Redirecting...
+              </div>
+            )}
+            <div style={{ color: '#6D6041', fontSize: '12px', marginBottom: '4px' }}>
+              Transaction Hash:
+            </div>
+            <div style={{
+              color: '#E1E2E2',
+              fontSize: '11px',
+              fontFamily: 'monospace',
+              wordBreak: 'break-all',
+            }}>
+              {registerHash}
+            </div>
+          </div>
+        )}
+
+        <button
+          onClick={handleRegisterSeller}
+          disabled={isRegisterPending || isRegisterConfirming || isRegistering}
+          style={{
+            padding: '14px 28px',
+            backgroundColor: isRegisterPending || isRegisterConfirming || isRegistering ? '#2C2C2C' : '#CAAB5B',
+            color: isRegisterPending || isRegisterConfirming || isRegistering ? '#6D6041' : '#121317',
+            border: 'none',
+            borderRadius: '8px',
+            fontSize: '16px',
+            fontWeight: 'bold',
+            cursor: isRegisterPending || isRegisterConfirming || isRegistering ? 'not-allowed' : 'pointer',
+            transition: 'opacity 0.2s',
+            width: '100%'
+          }}
+          onMouseEnter={(e) => {
+            if (!isRegisterPending && !isRegisterConfirming && !isRegistering) {
+              e.currentTarget.style.opacity = '0.9';
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (!isRegisterPending && !isRegisterConfirming && !isRegistering) {
+              e.currentTarget.style.opacity = '1';
+            }
+          }}
+        >
+          {isRegisterPending && 'Confirm in wallet...'}
+          {isRegisterConfirming && 'Registering...'}
+          {isRegisterSuccess && 'Success! Redirecting...'}
+          {!isRegisterPending && !isRegisterConfirming && !isRegisterSuccess && 'Register as Seller'}
+        </button>
+
+        <div style={{
+          marginTop: '16px',
+          padding: '12px',
+          backgroundColor: '#121317',
+          border: '1px solid #2C2C2C',
+          borderRadius: '8px',
+          fontSize: '12px',
+          color: '#6D6041',
+          textAlign: 'center'
+        }}>
+          ℹ️ Free to register - no fees required
+        </div>
+      </div>
+    </div>
+  );
+}
+
   if (!isConnected) {
     return (
       <div style={{
@@ -154,25 +331,6 @@ export function SellerDashboard() {
     );
   }
 
-  // Checking seller status
-  if (checkingSellerStatus) {
-    return (
-      <div style={{
-        backgroundColor: '#121317',
-        minHeight: '100vh',
-        padding: '40px 20px',
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-      }}>
-        <div style={{ color: '#E1E2E2', fontSize: '18px' }}>
-          Checking seller status...
-        </div>
-      </div>
-    );
-  }
-
-  // Not a registered seller - show registration
   if (!isSeller) {
     return (
       <div style={{
@@ -185,115 +343,38 @@ export function SellerDashboard() {
       }}>
         <div style={{
           backgroundColor: '#111216',
-          border: '1px solid #CAAB5B',
+          border: '1px solid #2C2C2C',
           borderRadius: '12px',
           padding: '40px',
           textAlign: 'center',
-          maxWidth: '500px',
-          width: '100%',
+          maxWidth: '400px',
         }}>
-          <div style={{ fontSize: '64px', marginBottom: '24px' }}>🏠</div>
-          <div style={{ color: '#CAAB5B', fontSize: '24px', fontWeight: 'bold', marginBottom: '12px' }}>
-            Seller Registration Required
-          </div>
-          <div style={{ color: '#E1E2E2', fontSize: '16px', marginBottom: '8px' }}>
+          <div style={{ fontSize: '48px', marginBottom: '16px' }}>🏠</div>
+          <div style={{ color: '#E1E2E2', fontSize: '18px', marginBottom: '8px' }}>
             Not a Registered Seller
           </div>
-          <div style={{ color: '#6D6041', fontSize: '14px', marginBottom: '32px', lineHeight: '1.6' }}>
-            You need to register as a seller before you can create and list assets on the platform. 
-            This is a one-time registration process.
+          <div style={{ color: '#6D6041', fontSize: '14px', marginBottom: '24px' }}>
+            You need to register as a seller to access this dashboard
           </div>
-
-          {/* Transaction Status */}
-          {hash && (
-            <div style={{
-              marginBottom: '24px',
-              padding: '16px',
-              backgroundColor: '#121317',
-              border: '1px solid #2C2C2C',
-              borderRadius: '12px',
-              textAlign: 'left',
-            }}>
-              {isPending && (
-                <div style={{ color: '#CAAB5B', marginBottom: '8px', fontWeight: 'bold' }}>
-                  ⏳ Waiting for confirmation...
-                </div>
-              )}
-              {isConfirming && (
-                <div style={{ color: '#CAAB5B', marginBottom: '8px', fontWeight: 'bold' }}>
-                  ⏳ Registering...
-                </div>
-              )}
-              {isSuccess && (
-                <div style={{ color: '#4CAF50', marginBottom: '8px', fontWeight: 'bold' }}>
-                  ✓ Successfully registered as seller!
-                </div>
-              )}
-              <div style={{ color: '#6D6041', fontSize: '12px', marginBottom: '4px' }}>
-                Transaction Hash:
-              </div>
-              <div style={{
-                color: '#E1E2E2',
-                fontSize: '11px',
-                fontFamily: 'monospace',
-                wordBreak: 'break-all',
-              }}>
-                {hash}
-              </div>
-            </div>
-          )}
-
-          {error && (
-            <div style={{
-              marginBottom: '24px',
-              padding: '16px',
-              backgroundColor: '#f44336',
-              borderRadius: '12px',
-              color: '#fff',
-              fontSize: '14px',
-            }}>
-              Error: {error.message}
-            </div>
-          )}
-
           <button
-            onClick={handleRegisterSeller}
-            disabled={isPending || isConfirming}
             style={{
-              width: '100%',
-              padding: '16px 24px',
-              backgroundColor: isPending || isConfirming ? '#2C2C2C' : '#CAAB5B',
-              color: isPending || isConfirming ? '#6D6041' : '#121317',
+              padding: '12px 24px',
+              backgroundColor: '#CAAB5B',
+              color: '#121317',
               border: 'none',
               borderRadius: '8px',
-              fontSize: '16px',
+              fontSize: '14px',
               fontWeight: 'bold',
-              cursor: isPending || isConfirming ? 'not-allowed' : 'pointer',
-              transition: 'opacity 0.2s',
-            }}
-            onMouseEnter={(e) => {
-              if (!isPending && !isConfirming) e.currentTarget.style.opacity = '0.9';
-            }}
-            onMouseLeave={(e) => {
-              if (!isPending && !isConfirming) e.currentTarget.style.opacity = '1';
+              cursor: 'pointer',
             }}
           >
-            {isPending ? 'Waiting for confirmation...' : 
-             isConfirming ? 'Registering...' : 
-             'Register as Seller'}
+            Register as Seller
           </button>
-          
-          {(isPending || isConfirming) && (
-            <div style={{ color: '#6D6041', fontSize: '12px', marginTop: '12px' }}>
-              Please confirm the transaction in your wallet
-            </div>
-          )}
         </div>
       </div>
     );
   }
 
-  // Loading assets
   if (isLoading) {
     return (
       <div style={{
@@ -311,7 +392,6 @@ export function SellerDashboard() {
     );
   }
 
-  // Error loading assets
   if (isError) {
     return (
       <div style={{
@@ -330,7 +410,11 @@ export function SellerDashboard() {
   }
 
   const availableAssets = assets?.filter(
-    asset => !asset.sold && !asset.isCanceled
+    asset => !asset.sold && !asset.isCanceled && !asset.isFractionalized
+  ) || [];
+
+  const fractionalizedAssets = assets?.filter(
+    asset => asset.isFractionalized
   ) || [];
 
   const pendingPaymentAssets = assets?.filter(
@@ -424,10 +508,10 @@ export function SellerDashboard() {
             padding: '20px',
           }}>
             <div style={{ color: '#6D6041', fontSize: '12px', marginBottom: '8px' }}>
-              PENDING PAYMENT
+              FRACTIONALIZED
             </div>
-            <div style={{ color: '#ff9800', fontSize: '28px', fontWeight: 'bold' }}>
-              {pendingPaymentAssets.length}
+            <div style={{ color: '#CAAB5B', fontSize: '28px', fontWeight: 'bold' }}>
+              {fractionalizedAssets.length}
             </div>
           </div>
           <div style={{
@@ -569,6 +653,8 @@ export function SellerDashboard() {
                   asset={asset}
                   onDelist={handleDelistClick}
                   onConfirmPayment={handleConfirmPaymentClick}
+                  onFractionalize={handleFractionalizeClick}
+                  onDividend={handleDividendClick}
                   isProcessing={actionTokenId === asset.tokenId}
                   isPending={isPending}
                   isConfirming={isConfirming}
@@ -606,9 +692,50 @@ export function SellerDashboard() {
                   asset={asset}
                   onDelist={handleDelistClick}
                   onConfirmPayment={handleConfirmPaymentClick}
+                  onFractionalize={handleFractionalizeClick}
+                  onDividend={handleDividendClick}
                   isProcessing={actionTokenId === asset.tokenId}
                   isPending={isPending}
                   isConfirming={isConfirming}
+                />
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* Fractionalized Assets Section */}
+        {fractionalizedAssets.length > 0 && (
+          <>
+            <h2 style={{
+              color: '#CAAB5B',
+              fontSize: '24px',
+              fontWeight: 'bold',
+              marginBottom: '24px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              <span>🔹</span> Fractionalized Assets ({fractionalizedAssets.length})
+            </h2>
+
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
+              gap: '24px',
+              marginBottom: '48px'
+            }}>
+              {fractionalizedAssets.map((asset) => (
+                <SellerAssetCard
+                  key={asset.tokenId.toString()}
+                  asset={asset}
+                  onDelist={handleDelistClick}
+                  onConfirmPayment={handleConfirmPaymentClick}
+                  onFractionalize={handleFractionalizeClick}
+                  onDividend={handleDividendClick}
+                  isProcessing={actionTokenId === asset.tokenId}
+                  isPending={isPending}
+                  isConfirming={isConfirming}
+                  isFractionalized
                 />
               ))}
             </div>
@@ -641,6 +768,8 @@ export function SellerDashboard() {
                   asset={asset}
                   onDelist={handleDelistClick}
                   onConfirmPayment={handleConfirmPaymentClick}
+                  onFractionalize={handleFractionalizeClick}
+                  onDividend={handleDividendClick}
                   isProcessing={false}
                   isPending={false}
                   isConfirming={false}
@@ -688,7 +817,9 @@ export function SellerDashboard() {
             borderRadius: '16px',
             padding: '32px',
             maxWidth: '500px',
-            width: '100%'
+            width: '100%',
+            maxHeight: '90vh',
+            overflowY: 'auto'
           }}>
             {/* Modal Header */}
             <div style={{
@@ -698,12 +829,17 @@ export function SellerDashboard() {
               marginBottom: '24px'
             }}>
               <h2 style={{
-                color: actionType === 'delist' ? '#f44336' : '#4CAF50',
+                color: actionType === 'delist' ? '#f44336' : 
+                       actionType === 'fractionalize' ? '#CAAB5B' :
+                       actionType === 'dividend' ? '#4CAF50' : '#4CAF50',
                 fontSize: '24px',
                 fontWeight: 'bold',
                 margin: 0
               }}>
-                {actionType === 'delist' ? 'Delist Asset' : 'Confirm Payment'}
+                {actionType === 'delist' && 'Delist Asset'}
+                {actionType === 'confirm' && 'Confirm Payment'}
+                {actionType === 'fractionalize' && 'Fractionalize Asset'}
+                {actionType === 'dividend' && 'Distribute Dividends'}
               </h2>
               <button
                 onClick={() => {
@@ -769,32 +905,164 @@ export function SellerDashboard() {
                   </span>
                 </div>
               )}
+              {actionType === 'fractionalize' && (
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                }}>
+                  <span style={{ color: '#6D6041', fontSize: '14px' }}>Status</span>
+                  <span style={{ color: '#E1E2E2', fontSize: '14px' }}>
+                    {selectedAsset.verified ? '✓ Verified' : 'Pending'}
+                  </span>
+                </div>
+              )}
+              {actionType === 'dividend' && (
+                <>
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    marginBottom: '8px'
+                  }}>
+                    <span style={{ color: '#6D6041', fontSize: '14px' }}>Total Tokens</span>
+                    <span style={{ color: '#E1E2E2', fontSize: '14px' }}>
+                      {selectedAsset.totalFractionalTokens?.toString() || '0'}
+                    </span>
+                  </div>
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                  }}>
+                    <span style={{ color: '#6D6041', fontSize: '14px' }}>Remaining Tokens</span>
+                    <span style={{ color: '#E1E2E2', fontSize: '14px' }}>
+                      {selectedAsset.remainingFractionalTokens?.toString() || '0'}
+                    </span>
+                  </div>
+                </>
+              )}
             </div>
 
-            {/* Warning Message */}
+            {/* Fractionalize Input */}
+            {actionType === 'fractionalize' && (
+              <div style={{ marginBottom: '24px' }}>
+                <label style={{
+                  color: '#6D6041',
+                  fontSize: '14px',
+                  display: 'block',
+                  marginBottom: '8px'
+                }}>
+                  Number of Fractional Tokens
+                </label>
+                <input
+                  type="number"
+                  value={totalTokens}
+                  onChange={(e) => setTotalTokens(e.target.value)}
+                  placeholder="100"
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    backgroundColor: '#121317',
+                    border: '1px solid #2C2C2C',
+                    borderRadius: '8px',
+                    color: '#E1E2E2',
+                    fontSize: '14px',
+                  }}
+                />
+                <div style={{
+                  color: '#6D6041',
+                  fontSize: '12px',
+                  marginTop: '8px'
+                }}>
+                  Price per token: {totalTokens && Number(totalTokens) > 0 
+                    ? formatUnits(BigInt(selectedAsset.price.toString()) / BigInt(totalTokens), 6)
+                    : '0'} USDC
+                </div>
+              </div>
+            )}
+
+            {/* Dividend Input */}
+            {actionType === 'dividend' && (
+              <div style={{ marginBottom: '24px' }}>
+                <label style={{
+                  color: '#6D6041',
+                  fontSize: '14px',
+                  display: 'block',
+                  marginBottom: '8px'
+                }}>
+                  Total Dividend Amount (USDC)
+                </label>
+                <input
+                  type="number"
+                  value={dividendAmount}
+                  onChange={(e) => setDividendAmount(e.target.value)}
+                  placeholder="1000"
+                  step="0.01"
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    backgroundColor: '#121317',
+                    border: '1px solid #2C2C2C',
+                    borderRadius: '8px',
+                    color: '#E1E2E2',
+                    fontSize: '14px',
+                  }}
+                />
+                <div style={{
+                  color: '#6D6041',
+                  fontSize: '12px',
+                  marginTop: '8px'
+                }}>
+                  This will be distributed proportionally to all token holders
+                </div>
+              </div>
+            )}
+
+            {/* Warning/Info Message */}
             <div style={{
-              backgroundColor: actionType === 'delist' ? '#f4433620' : '#4CAF5020',
-              border: `1px solid ${actionType === 'delist' ? '#f44336' : '#4CAF50'}`,
+              backgroundColor: actionType === 'delist' ? '#f4433620' : 
+                             actionType === 'fractionalize' ? '#CAAB5B20' :
+                             actionType === 'dividend' ? '#4CAF5020' : '#4CAF5020',
+              border: `1px solid ${actionType === 'delist' ? '#f44336' : 
+                                    actionType === 'fractionalize' ? '#CAAB5B' :
+                                    actionType === 'dividend' ? '#4CAF50' : '#4CAF50'}`,
               borderRadius: '12px',
               padding: '16px',
               marginBottom: '24px',
               fontSize: '14px',
               color: '#E1E2E2'
             }}>
-              {actionType === 'delist' ? (
+              {actionType === 'delist' && (
                 <>
                   <div style={{ fontWeight: 'bold', marginBottom: '8px', color: '#f44336' }}>
                     ⚠️ Warning
                   </div>
                   This will remove the asset from the marketplace. This action cannot be undone.
                 </>
-              ) : (
+              )}
+              {actionType === 'confirm' && (
                 <>
                   <div style={{ fontWeight: 'bold', marginBottom: '8px', color: '#4CAF50' }}>
                     ✓ Confirm Payment
                   </div>
                   By confirming, you acknowledge that you have received the payment from the buyer. 
                   The asset ownership will be transferred to the buyer.
+                </>
+              )}
+              {actionType === 'fractionalize' && (
+                <>
+                  <div style={{ fontWeight: 'bold', marginBottom: '8px', color: '#CAAB5B' }}>
+                    🔹 Fractionalize Asset
+                  </div>
+                  This will convert your asset into {totalTokens} fractional tokens. Buyers can purchase 
+                  individual tokens, allowing for partial ownership. You cannot undo this action.
+                </>
+              )}
+              {actionType === 'dividend' && (
+                <>
+                  <div style={{ fontWeight: 'bold', marginBottom: '8px', color: '#4CAF50' }}>
+                    💰 Distribute Dividends
+                  </div>
+                  The total amount of {dividendAmount} USDC will be distributed proportionally to all 
+                  fractional token holders based on their ownership percentage.
                 </>
               )}
             </div>
@@ -826,13 +1094,24 @@ export function SellerDashboard() {
                 Cancel
               </button>
               <button
-                onClick={actionType === 'delist' ? handleDelistAsset : handleConfirmPayment}
-                disabled={isPending || isConfirming}
+                onClick={
+                  actionType === 'delist' ? handleDelistAsset : 
+                  actionType === 'confirm' ? handleConfirmPayment :
+                  actionType === 'fractionalize' ? handleFractionalizeAsset :
+                  actionType === 'dividend' ? handleDistributeDividend : undefined
+                }
+                disabled={
+                  isPending || isConfirming || 
+                  (actionType === 'fractionalize' && (!totalTokens || Number(totalTokens) <= 0)) ||
+                  (actionType === 'dividend' && (!dividendAmount || Number(dividendAmount) <= 0))
+                }
                 style={{
                   padding: '14px',
                   backgroundColor: isPending || isConfirming 
                     ? '#2C2C2C' 
-                    : actionType === 'delist' ? '#f44336' : '#4CAF50',
+                    : actionType === 'delist' ? '#f44336' : 
+                      actionType === 'fractionalize' ? '#CAAB5B' :
+                      actionType === 'dividend' ? '#4CAF50' : '#4CAF50',
                   color: isPending || isConfirming ? '#6D6041' : '#fff',
                   border: 'none',
                   borderRadius: '12px',
@@ -850,7 +1129,12 @@ export function SellerDashboard() {
               >
                 {isPending && 'Confirm in wallet...'}
                 {isConfirming && 'Processing...'}
-                {!isPending && !isConfirming && (actionType === 'delist' ? 'Delist' : 'Confirm Payment')}
+                {!isPending && !isConfirming && (
+                  actionType === 'delist' ? 'Delist' : 
+                  actionType === 'confirm' ? 'Confirm Payment' :
+                  actionType === 'fractionalize' ? 'Fractionalize' :
+                  actionType === 'dividend' ? 'Distribute' : 'Confirm'
+                )}
               </button>
             </div>
           </div>
@@ -860,22 +1144,25 @@ export function SellerDashboard() {
   );
 }
 
-// Seller Asset Card Component
+// Updated Seller Asset Card Component
 function SellerAssetCard({
   asset,
   onDelist,
   onConfirmPayment,
+  onFractionalize,
+  onDividend,
   isProcessing,
   isPending,
   isConfirming,
   showConfirmPayment = false,
-  isSold = false
+  isSold = false,
+  isFractionalized = false
 }) {
   return (
     <div
       style={{
         backgroundColor: '#111216',
-        border: `1px solid ${isSold ? '#4CAF50' : showConfirmPayment ? '#ff9800' : '#2C2C2C'}`,
+        border: `1px solid ${isSold ? '#4CAF50' : isFractionalized ? '#CAAB5B' : showConfirmPayment ? '#ff9800' : '#2C2C2C'}`,
         borderRadius: '12px',
         padding: '24px',
         transition: 'transform 0.2s, box-shadow 0.2s',
@@ -944,6 +1231,49 @@ function SellerAssetCard({
         </div>
       </div>
 
+      {/* Fractional Info */}
+      {isFractionalized && (
+        <div style={{
+          backgroundColor: '#121317',
+          border: '1px solid #2C2C2C',
+          borderRadius: '8px',
+          padding: '12px',
+          marginBottom: '20px'
+        }}>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: '12px',
+            marginBottom: '8px'
+          }}>
+            <div>
+              <div style={{ color: '#6D6041', fontSize: '11px', marginBottom: '4px' }}>
+                Total Tokens
+              </div>
+              <div style={{ color: '#E1E2E2', fontSize: '16px', fontWeight: 'bold' }}>
+                {asset.totalFractionalTokens?.toString() || '0'}
+              </div>
+            </div>
+            <div>
+              <div style={{ color: '#6D6041', fontSize: '11px', marginBottom: '4px' }}>
+                Remaining
+              </div>
+              <div style={{ color: '#CAAB5B', fontSize: '16px', fontWeight: 'bold' }}>
+                {asset.remainingFractionalTokens?.toString() || '0'}
+              </div>
+            </div>
+          </div>
+          <div>
+            <div style={{ color: '#6D6041', fontSize: '11px', marginBottom: '4px' }}>
+              Price per Token
+            </div>
+            <div style={{ color: '#E1E2E2', fontSize: '14px', fontWeight: 'bold' }}>
+              {asset.pricePerFractionalToken ? formatUnits(asset.pricePerFractionalToken, 6) : '0'} USDC
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Buyer Info (if applicable) */}
       {showConfirmPayment && asset.currentBuyer && (
         <div style={{ marginBottom: '20px' }}>
@@ -992,10 +1322,12 @@ function SellerAssetCard({
             fontSize: '14px',
             fontWeight: '500'
           }}>
-            {isSold ? 'Sold' : showConfirmPayment ? 'Awaiting Confirmation' : 'Listed'}
+            {isSold ? 'Sold' : 
+             isFractionalized ? 'Fractionalized' :
+             showConfirmPayment ? 'Awaiting Confirmation' : 'Listed'}
           </div>
         </div>
-        {asset.isFractionalized && (
+        {isFractionalized && (
           <div style={{ flex: 1 }}>
             <div style={{
               color: '#6D6041',
@@ -1019,7 +1351,7 @@ function SellerAssetCard({
       {!isSold && (
         <div style={{
           display: 'grid',
-          gridTemplateColumns: showConfirmPayment ? '1fr 1fr' : '1fr',
+          gridTemplateColumns: showConfirmPayment ? '1fr 1fr' : isFractionalized ? '1fr 1fr' : '1fr 1fr',
           gap: '12px'
         }}>
           {showConfirmPayment && (
@@ -1051,6 +1383,67 @@ function SellerAssetCard({
               ✓ Confirm
             </button>
           )}
+          
+          {!isFractionalized && !showConfirmPayment && asset.verified && (
+            <button
+              onClick={() => onFractionalize(asset)}
+              disabled={isPending || isConfirming || isProcessing}
+              style={{
+                padding: '12px',
+                backgroundColor: isPending || isConfirming || isProcessing ? '#2C2C2C' : '#CAAB5B',
+                color: isPending || isConfirming || isProcessing ? '#6D6041' : '#121317',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: 'bold',
+                cursor: isPending || isConfirming || isProcessing ? 'not-allowed' : 'pointer',
+                transition: 'opacity 0.2s',
+              }}
+              onMouseEnter={(e) => {
+                if (!isPending && !isConfirming && !isProcessing) {
+                  e.currentTarget.style.opacity = '0.9';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isPending && !isConfirming && !isProcessing) {
+                  e.currentTarget.style.opacity = '1';
+                }
+              }}
+            >
+              🔹 Fractionalize
+            </button>
+          )}
+
+          {isFractionalized && (
+            <button
+              onClick={() => onDividend(asset)}
+              disabled={isPending || isConfirming || isProcessing}
+              style={{
+                padding: '12px',
+                backgroundColor: isPending || isConfirming || isProcessing ? '#2C2C2C' : '#4CAF50',
+                color: isPending || isConfirming || isProcessing ? '#6D6041' : '#fff',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: 'bold',
+                cursor: isPending || isConfirming || isProcessing ? 'not-allowed' : 'pointer',
+                transition: 'opacity 0.2s',
+              }}
+              onMouseEnter={(e) => {
+                if (!isPending && !isConfirming && !isProcessing) {
+                  e.currentTarget.style.opacity = '0.9';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isPending && !isConfirming && !isProcessing) {
+                  e.currentTarget.style.opacity = '1';
+                }
+              }}
+            >
+              💰 Dividend
+            </button>
+          )}
+
           <button
             onClick={() => onDelist(asset)}
             disabled={isPending || isConfirming || isProcessing}
