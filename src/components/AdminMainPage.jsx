@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useReadContract, useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { REAL_ESTATE_DAPP, REAL_ESTATE_DAPP_ADDRESS, MOCK_USDC, MOCK_USDC_ADDRESS } from '../config/contract.config';
 import { formatUnits, parseUnits } from 'viem';
@@ -9,6 +9,9 @@ export function AdminDashboard() {
   const [showModal, setShowModal] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState(null);
   const [selectedTab, setSelectedTab] = useState('verification');
+  const [retryCount, setRetryCount] = useState(0);
+  const [isChecking, setIsChecking] = useState(true);
+  const [countdown, setCountdown] = useState(10);
 
   const [newAdminAddress, setNewAdminAddress] = useState('');
   const [removeAdminAddress, setRemoveAdminAddress] = useState('');
@@ -16,14 +19,18 @@ export function AdminDashboard() {
   const [withdrawRecipient, setWithdrawRecipient] = useState('');
   const [withdrawAmount, setWithdrawAmount] = useState('');
 
-  const { data: isAdmin, refetch: refetchAdminStatus } = useReadContract({
+  const { data: isAdmin, refetch: refetchAdminStatus, isLoading: isLoading,
+  isError: isError } = useReadContract({
     address: REAL_ESTATE_DAPP_ADDRESS,
     abi: REAL_ESTATE_DAPP,
     functionName: 'isAdmin',
     args: address ? [address] : undefined,
+    query: {
+    retry: 3, // Retry 3 times on failure
+    retryDelay: 1000, // Wait 1 second between retries
+  }
   });
 
-  // Get contract owner
   const { data: contractOwner } = useReadContract({
     address: REAL_ESTATE_DAPP_ADDRESS,
     abi: REAL_ESTATE_DAPP,
@@ -49,6 +56,44 @@ export function AdminDashboard() {
     args: [REAL_ESTATE_DAPP_ADDRESS],
   });
 
+  useEffect(() => {
+  let countdownInterval;
+  let retryTimeout;
+
+  if (address && !isAdmin && !isOwner && retryCount < 3) {
+    // Start countdown
+    setCountdown(10);
+    countdownInterval = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(countdownInterval);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    // Retry after 30 seconds
+    retryTimeout = setTimeout(() => {
+      refetchAdminStatus();
+      setRetryCount((prev) => prev + 1);
+    }, 10000);
+  } else if (isAdmin || isOwner) {
+    // Access granted, stop checking
+    setIsChecking(false);
+    setRetryCount(0);
+  } else if (retryCount >= 3) {
+    // Max retries reached
+    setIsChecking(false);
+  }
+
+  return () => {
+    clearInterval(countdownInterval);
+    clearTimeout(retryTimeout);
+  };
+}, [address, isAdmin, isOwner, retryCount, refetchAdminStatus]);
+
+
   // Transaction handling
   const { data: hash, writeContract, isPending, error } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
@@ -56,6 +101,8 @@ export function AdminDashboard() {
   // Filter assets
   const unverifiedAssets = allAssets?.filter(asset => !asset.verified && !asset.sold) || [];
   const verifiedAssets = allAssets?.filter(asset => asset.verified) || [];
+
+
 
   // Handle verify asset
   const handleVerifyAsset = async () => {
@@ -80,7 +127,7 @@ export function AdminDashboard() {
         address: REAL_ESTATE_DAPP_ADDRESS,
         abi: REAL_ESTATE_DAPP,
         functionName: 'addAdmin',
-        args: [newAdminAddress as `0x${string}`],
+        args: [newAdminAddress],
       });
     } catch (err) {
       console.error('Error adding admin:', err);
@@ -95,7 +142,7 @@ export function AdminDashboard() {
         address: REAL_ESTATE_DAPP_ADDRESS,
         abi: REAL_ESTATE_DAPP,
         functionName: 'removeAdmin',
-        args: [removeAdminAddress as `0x${string}`],
+        args: [removeAdminAddress],
       });
     } catch (err) {
       console.error('Error removing admin:', err);
@@ -110,7 +157,7 @@ export function AdminDashboard() {
         address: REAL_ESTATE_DAPP_ADDRESS,
         abi: REAL_ESTATE_DAPP,
         functionName: 'withdrawUSDC',
-        args: [withdrawRecipient as `0x${string}`, parseUnits(withdrawAmount, 6)],
+        args: [withdrawRecipient, parseUnits(withdrawAmount, 6)],
       });
     } catch (err) {
       console.error('Error withdrawing USDC:', err);
@@ -162,7 +209,23 @@ export function AdminDashboard() {
     );
   }
 
+  if (isLoading) {
+  return <div>Checking permissions...</div>;
+}
+
+// Network error - allow manual retry
+if (isError) {
+  return (
+    <div>
+      <p>Network error. Unable to verify admin status.</p>
+      <button onClick={() => refetch()}>Retry Now</button>
+    </div>
+  );
+}
+
   if (!isAdmin && !isOwner) {
+  // Still checking with retries remaining
+  if (retryCount < 3 && isChecking) {
     return (
       <div style={{
         backgroundColor: '#121317',
@@ -174,23 +237,85 @@ export function AdminDashboard() {
       }}>
         <div style={{
           backgroundColor: '#111216',
-          border: '1px solid #f44336',
+          border: '1px solid #ff9800',
           borderRadius: '12px',
           padding: '40px',
           textAlign: 'center',
           maxWidth: '400px',
         }}>
-          <div style={{ fontSize: '48px', marginBottom: '16px' }}>🚫</div>
+          <div style={{ fontSize: '48px', marginBottom: '16px' }}>⏳</div>
           <div style={{ color: '#E1E2E2', fontSize: '18px', marginBottom: '8px' }}>
-            Access Denied
+            Checking Admin Status...
           </div>
-          <div style={{ color: '#6D6041', fontSize: '14px' }}>
-            You do not have admin privileges to access this dashboard
+          <div style={{ color: '#6D6041', fontSize: '14px', marginBottom: '24px' }}>
+            Attempt {retryCount + 1} of 3
+          </div>
+          <div style={{
+            backgroundColor: '#121317',
+            border: '1px solid #2C2C2C',
+            borderRadius: '8px',
+            padding: '16px',
+            marginBottom: '16px'
+          }}>
+            <div style={{ color: '#ff9800', fontSize: '32px', fontWeight: 'bold', marginBottom: '8px' }}>
+              {countdown}s
+            </div>
+            <div style={{ color: '#6D6041', fontSize: '12px' }}>
+              Next retry in {countdown} seconds
+            </div>
+          </div>
+          <div style={{
+            color: '#6D6041',
+            fontSize: '12px',
+            padding: '12px',
+            backgroundColor: '#121317',
+            borderRadius: '8px'
+          }}>
+            Please wait while we verify your admin privileges...
           </div>
         </div>
       </div>
     );
   }
+
+  // Max retries reached - access denied
+  return (
+    <div style={{
+      backgroundColor: '#121317',
+      minHeight: '100vh',
+      padding: '40px 20px',
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+    }}>
+      <div style={{
+        backgroundColor: '#111216',
+        border: '1px solid #f44336',
+        borderRadius: '12px',
+        padding: '40px',
+        textAlign: 'center',
+        maxWidth: '400px',
+      }}>
+        <div style={{ fontSize: '48px', marginBottom: '16px' }}>🚫</div>
+        <div style={{ color: '#E1E2E2', fontSize: '18px', marginBottom: '8px' }}>
+          Access Denied
+        </div>
+        <div style={{ color: '#6D6041', fontSize: '14px', marginBottom: '16px' }}>
+          You do not have admin privileges to access this dashboard
+        </div>
+        <div style={{
+          color: '#6D6041',
+          fontSize: '12px',
+          padding: '12px',
+          backgroundColor: '#121317',
+          borderRadius: '8px'
+        }}>
+          Checked 3 times - no admin access detected
+        </div>
+      </div>
+    </div>
+  );
+}
 
   return (
     <div style={{

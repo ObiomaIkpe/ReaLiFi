@@ -1,8 +1,9 @@
+import { AdminDashboard } from '@/components/AdminMainPage'
 import React from 'react'
 
 const AdminPageM = () => {
   return (
-    <Admin/>
+    <AdminDashboard/>
   )
 }
 

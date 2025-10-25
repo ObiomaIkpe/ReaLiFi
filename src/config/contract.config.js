@@ -8,9 +8,9 @@ export const REAL_ESTATE_DAPP = RealEstateDapp;
 export const MOCK_USDC = MockUsdc;
 
 export const CONTRACTS = {
-  RealEstateDApp: /** @type {`0x${string}`} */ ('0x8262dfA64c7fd013241CBAB524f2319b271F29AE'),
-  MockUSDC: /** @type {`0x${string}`} */ ('0x51502AB8d26D4283078E5fd0860c0a1ACC4082EA'),
-  RealiFiFractionalToken: /** @type {`0x${string}`} */ ('0xEf0762D6438577EeAEf72a8860aFd30185047B5B')
+  RealEstateDApp: /** @type {`0x${string}`} */ ('0xd1a4710C80A22eBfcc531c888ecFc9f402529f6F'),
+  MockUSDC: /** @type {`0x${string}`} */ (' 0x58738EEa382E0d6EA776C5110Cd11cb9C4Aa7140'),
+  RealiFiFractionalToken: /** @type {`0x${string}`} */ ('0x543F4D587EBE758470b461d3adC0954C6c71f111')
 };
 
 export const FRACTIONAL_TOKEN_ADDRESS = CONTRACTS.RealiFiFractionalToken;
