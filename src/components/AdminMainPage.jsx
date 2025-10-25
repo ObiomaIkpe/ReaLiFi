@@ -1,7 +1,6 @@
-// src/components/AdminDashboard.tsx
 import { useState } from 'react';
 import { useReadContract, useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
-import { REAL_ESTATE_DAPP, REAL_ESTATE_DAPP_ADDRESS, USDC_ABI, USDC_TOKEN_ADDRESS } from '../config/contract.config';
+import { REAL_ESTATE_DAPP, REAL_ESTATE_DAPP_ADDRESS, MOCK_USDC, MOCK_USDC_ADDRESS } from '../config/contract.config';
 import { formatUnits, parseUnits } from 'viem';
 
 export function AdminDashboard() {
@@ -11,15 +10,12 @@ export function AdminDashboard() {
   const [selectedAsset, setSelectedAsset] = useState(null);
   const [selectedTab, setSelectedTab] = useState('verification');
 
-  // Admin management states
   const [newAdminAddress, setNewAdminAddress] = useState('');
   const [removeAdminAddress, setRemoveAdminAddress] = useState('');
   
-  // Withdrawal states
   const [withdrawRecipient, setWithdrawRecipient] = useState('');
   const [withdrawAmount, setWithdrawAmount] = useState('');
 
-  // Check if current user is admin
   const { data: isAdmin, refetch: refetchAdminStatus } = useReadContract({
     address: REAL_ESTATE_DAPP_ADDRESS,
     abi: REAL_ESTATE_DAPP,
@@ -47,8 +43,8 @@ export function AdminDashboard() {
 
   // Get contract USDC balance
   const { data: contractBalance } = useReadContract({
-    address: USDC_TOKEN_ADDRESS,
-    abi: USDC_ABI,
+    address: MOCK_USDC_ADDRESS,
+    abi: MOCK_USDC,
     functionName: 'balanceOf',
     args: [REAL_ESTATE_DAPP_ADDRESS],
   });
