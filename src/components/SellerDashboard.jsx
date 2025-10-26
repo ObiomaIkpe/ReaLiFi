@@ -1,4 +1,3 @@
-// src/components/SellerDashboard.tsx
 import { useState } from 'react';
 import { useReadContract, useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { REAL_ESTATE_DAPP, REAL_ESTATE_DAPP_ADDRESS } from '../config/contract.config';

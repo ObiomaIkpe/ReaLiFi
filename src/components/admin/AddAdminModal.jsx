@@ -1,4 +1,3 @@
-// components/AddAdminModal.jsx
 import React, { useEffect, useState } from 'react';
 import { useAccount } from 'wagmi';
 import { isAddress, getAddress } from 'viem';

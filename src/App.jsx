@@ -11,6 +11,7 @@ import MarketplacePage from "./pages/MarketPlacePage";
 import { BuyerDashboard } from "./components/BuyerDashboard";
 import { SellerDashboard } from "./components/SellerDashboard";
 import AdminPageM from "./pages/AdminPageM";
+import BuyerDashboardPage from "./pages/BuyerDashBoardPage";
 
 function App() {
   return (
@@ -24,7 +25,7 @@ function App() {
           <Route path="/upload" element={<MultiStepForm />} />
           <Route path="/assets" element={<AssetsPage />} />
           <Route path="/seller-dashboard" element={<SellerDashboard />} />
-          <Route path="/buyer-dashboard" element={<BuyerDashboard />} />
+          <Route path="/buyer-dashboard" element={<BuyerDashboardPage />} />
           <Route path="/admin-dashboard" element={<AdminPageM />} />
           <Route path="/market-place" element={<MarketplacePage />} />
           <Route path="/asset/:propertyId" element={<PropertyDetailsPage />} />
