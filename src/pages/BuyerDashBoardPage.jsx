@@ -1,5 +1,5 @@
+import { BuyerDashboard } from "@/components/BuyerDashboard";
 
-import { BuyerDashboard } from '@/components/BuyerDashboard';
 
 export default function BuyerDashboardPage() {
   return (

@@ -1,35 +1,44 @@
-// src/components/BuyerDashboard.tsx
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useReadContract, useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
-import { REAL_ESTATE_DAPP, REAL_ESTATE_DAPP_ADDRESS, MOCK_USDC, MOCK_USDC_ADDRESS } from '../config/contract.config';
 import { formatUnits, parseUnits } from 'viem';
+import { MOCK_USDC, MOCK_USDC_ADDRESS, REAL_ESTATE_DAPP, REAL_ESTATE_DAPP_ADDRESS } from '@/config/contract.config';
 
 export function BuyerDashboard() {
   const { address, isConnected } = useAccount();
-  const [selectedTab, setSelectedTab] = useState('browse'); // browse, portfolio, pending
+  const [selectedTab, setSelectedTab] = useState('browse');
   const [selectedAsset, setSelectedAsset] = useState(null);
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
-  const [purchaseType, setPurchaseType] = useState(null); // 'whole' or 'fractional'
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [purchaseType, setPurchaseType] = useState(null);
   const [fractionalAmount, setFractionalAmount] = useState('');
+  const [cancelAmount, setCancelAmount] = useState('');
   const [needsApproval, setNeedsApproval] = useState(false);
+  const [recentPurchases, setRecentPurchases] = useState([]);
 
-  // Get available assets (verified, not sold, not canceled)
-  const { data: availableAssets, refetch: refetchAssets } = useReadContract({
+  const { data: usdcAddress } = useReadContract({
+    address: REAL_ESTATE_DAPP_ADDRESS,
+    abi: REAL_ESTATE_DAPP,
+    functionName: 'usdcToken',
+  });
+
+  const { data: allAssets, refetch: refetchAssets } = useReadContract({
+    address: REAL_ESTATE_DAPP_ADDRESS,
+    abi: REAL_ESTATE_DAPP,
+    functionName: 'fetchAllAssetsWithDisplayInfo',
+  });
+
+  const { data: availableAssets } = useReadContract({
     address: REAL_ESTATE_DAPP_ADDRESS,
     abi: REAL_ESTATE_DAPP,
     functionName: 'fetchAvailableAssets',
-    args: [],
   });
 
-  // Get fractionalized assets
   const { data: fractionalAssets } = useReadContract({
     address: REAL_ESTATE_DAPP_ADDRESS,
     abi: REAL_ESTATE_DAPP,
     functionName: 'fetchFractionalizedAssets',
-    args: [],
   });
 
-  // Get buyer portfolio
   const { data: portfolio, refetch: refetchPortfolio } = useReadContract({
     address: REAL_ESTATE_DAPP_ADDRESS,
     abi: REAL_ESTATE_DAPP,
@@ -37,15 +46,13 @@ export function BuyerDashboard() {
     args: address ? [address] : undefined,
   });
 
-  // Get USDC balance
-  const { data: usdcBalance } = useReadContract({
+  const { data: usdcBalance, refetch: refetchBalance } = useReadContract({
     address: MOCK_USDC_ADDRESS,
     abi: MOCK_USDC,
     functionName: 'balanceOf',
     args: address ? [address] : undefined,
   });
 
-  // Get USDC allowance
   const { data: usdcAllowance, refetch: refetchAllowance } = useReadContract({
     address: MOCK_USDC_ADDRESS,
     abi: MOCK_USDC,
@@ -53,31 +60,49 @@ export function BuyerDashboard() {
     args: address ? [address, REAL_ESTATE_DAPP_ADDRESS] : undefined,
   });
 
-  // Get cancellation penalty percentage
   const { data: cancellationPenalty } = useReadContract({
     address: REAL_ESTATE_DAPP_ADDRESS,
     abi: REAL_ESTATE_DAPP,
     functionName: 'CANCELLATION_PENALTY_PERCENTAGE',
-    args: [],
   });
 
-  // Transaction handling
   const { data: hash, writeContract, isPending, error } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
-  // Filter assets
   const wholeAssets = availableAssets?.filter(asset => !asset.isFractionalized) || [];
   const fractionalizedAssets = fractionalAssets || [];
 
-  // Get pending purchases (assets where user is current buyer)
-  const pendingPurchases = availableAssets?.filter(
+  const pendingFullPurchases = allAssets?.filter(
     asset => asset.currentBuyer && 
     asset.currentBuyer.toLowerCase() === address?.toLowerCase() && 
-    !asset.isPaidFor
+    !asset.isPaidFor &&
+    !asset.isCanceled &&
+    !asset.isFractionalized
   ) || [];
 
-  // Handle approve USDC
+  const completedFullPurchases = allAssets?.filter(
+    asset => asset.currentBuyer &&
+    asset.currentBuyer.toLowerCase() === address?.toLowerCase() &&
+    asset.isPaidFor &&
+    !asset.isFractionalized
+  ) || [];
+
+  const canceledPurchases = allAssets?.filter(
+    asset => asset.currentBuyer &&
+    asset.currentBuyer.toLowerCase() === address?.toLowerCase() &&
+    asset.isCanceled
+  ) || [];
+
+  const totalInvestment = completedFullPurchases.reduce(
+    (sum, asset) => sum + BigInt(asset.price.toString()),
+    BigInt(0)
+  ) + (portfolio?.reduce(
+    (sum, item) => sum + BigInt(item.investmentValue.toString()),
+    BigInt(0)
+  ) || BigInt(0));
+
   const handleApproveUSDC = async (amount) => {
+    if (!usdcAddress) return;
     try {
       writeContract({
         address: MOCK_USDC_ADDRESS,
@@ -90,10 +115,8 @@ export function BuyerDashboard() {
     }
   };
 
-  // Handle buy whole asset
   const handleBuyWholeAsset = async () => {
     if (!selectedAsset) return;
-
     try {
       writeContract({
         address: REAL_ESTATE_DAPP_ADDRESS,
@@ -106,10 +129,8 @@ export function BuyerDashboard() {
     }
   };
 
-  // Handle buy fractional asset
   const handleBuyFractionalAsset = async () => {
     if (!selectedAsset || !fractionalAmount) return;
-
     try {
       writeContract({
         address: REAL_ESTATE_DAPP_ADDRESS,
@@ -122,8 +143,7 @@ export function BuyerDashboard() {
     }
   };
 
-  // Handle cancel purchase
-  const handleCancelPurchase = async (tokenId) => {
+  const handleCancelFullPurchase = async (tokenId) => {
     try {
       writeContract({
         address: REAL_ESTATE_DAPP_ADDRESS,
@@ -136,48 +156,102 @@ export function BuyerDashboard() {
     }
   };
 
-  // Handle mint USDC (for testing)
+  const handleCancelFractionalPurchase = async () => {
+    if (!selectedAsset || !cancelAmount) return;
+    try {
+      writeContract({
+        address: REAL_ESTATE_DAPP_ADDRESS,
+        abi: REAL_ESTATE_DAPP,
+        functionName: 'cancelFractionalAssetPurchase',
+        args: [selectedAsset.tokenId, BigInt(cancelAmount)],
+      });
+    } catch (err) {
+      console.error('Error canceling fractional purchase:', err);
+    }
+  };
+
   const handleMintUSDC = async () => {
+    if (!usdcAddress || !address) return;
     try {
       writeContract({
         address: MOCK_USDC_ADDRESS,
         abi: MOCK_USDC,
         functionName: 'mint',
-        args: [address, parseUnits('10000', 6)], // Mint 10,000 USDC
+        args: [address, parseUnits('10000', 6)],
       });
     } catch (err) {
       console.error('Error minting USDC:', err);
     }
   };
 
-  // Open purchase modal
-  const openPurchaseModal = (asset, type) => {
+  const openPurchaseModal = (asset, type, amount = '') => {
     setSelectedAsset(asset);
     setPurchaseType(type);
+    setFractionalAmount(amount);
     
-    // Check if approval is needed
     const requiredAmount = type === 'whole' 
       ? asset.price 
-      : BigInt(fractionalAmount || 0) * asset.pricePerFractionalToken;
+      : BigInt(amount || '1') * asset.pricePerFractionalToken;
     
-    const hasEnoughAllowance = usdcAllowance && usdcAllowance >= requiredAmount;
+    const hasEnoughAllowance = usdcAllowance && BigInt(usdcAllowance.toString()) >= requiredAmount;
     setNeedsApproval(!hasEnoughAllowance);
     setShowPurchaseModal(true);
   };
 
-  // Reset on success
-  if (isSuccess) {
-    setTimeout(() => {
-      setShowPurchaseModal(false);
-      setSelectedAsset(null);
-      setPurchaseType(null);
-      setFractionalAmount('');
-      setNeedsApproval(false);
-      refetchAssets();
-      refetchPortfolio();
+  const openCancelFractionalModal = (asset) => {
+    setSelectedAsset(asset);
+    setCancelAmount('');
+    setShowCancelModal(true);
+  };
+
+  useEffect(() => {
+    if (isSuccess) {
+      if (purchaseType === 'fractional' && selectedAsset && fractionalAmount) {
+        setRecentPurchases(prev => [
+          ...prev,
+          {
+            tokenId: selectedAsset.tokenId,
+            amount: fractionalAmount,
+            timestamp: Date.now()
+          }
+        ]);
+      }
+      
+      refetchBalance();
       refetchAllowance();
-    }, 2000);
-  }
+      refetchPortfolio();
+      
+      setTimeout(() => {
+        setShowPurchaseModal(false);
+        setShowCancelModal(false);
+        setSelectedAsset(null);
+        setPurchaseType(null);
+        setFractionalAmount('');
+        setCancelAmount('');
+        // setNeedsApproval(false);
+        refetchAssets();
+      }, 2000);
+    }
+  }, [isSuccess, purchaseType, selectedAsset, fractionalAmount, refetchBalance, refetchAllowance, refetchPortfolio, refetchAssets]);
+
+  useEffect(() => {
+    if (recentPurchases.length > 0) {
+      const interval = setInterval(() => {
+        refetchPortfolio();
+        refetchBalance();
+      }, 3000);
+
+      const timeout = setTimeout(() => {
+        clearInterval(interval);
+        setRecentPurchases([]);
+      }, 30000);
+
+      return () => {
+        clearInterval(interval);
+        clearTimeout(timeout);
+      };
+    }
+  }, [recentPurchases, refetchPortfolio, refetchBalance]);
 
   if (!isConnected) {
     return (
@@ -216,7 +290,6 @@ export function BuyerDashboard() {
       padding: '40px 20px'
     }}>
       <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
-        {/* Header */}
         <div style={{
           display: 'flex',
           justifyContent: 'space-between',
@@ -256,7 +329,6 @@ export function BuyerDashboard() {
           </div>
         </div>
 
-        {/* USDC Balance & Actions */}
         <div style={{
           backgroundColor: '#111216',
           border: '1px solid #2C2C2C',
@@ -308,7 +380,6 @@ export function BuyerDashboard() {
           </div>
         </div>
 
-        {/* Stats Overview */}
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
@@ -348,10 +419,10 @@ export function BuyerDashboard() {
             padding: '20px',
           }}>
             <div style={{ color: '#6D6041', fontSize: '12px', marginBottom: '8px' }}>
-              MY INVESTMENTS
+              MY PROPERTIES
             </div>
             <div style={{ color: '#4CAF50', fontSize: '28px', fontWeight: 'bold' }}>
-              {portfolio?.length || 0}
+              {completedFullPurchases.length}
             </div>
           </div>
           <div style={{
@@ -361,15 +432,14 @@ export function BuyerDashboard() {
             padding: '20px',
           }}>
             <div style={{ color: '#6D6041', fontSize: '12px', marginBottom: '8px' }}>
-              PENDING PURCHASES
+              TOTAL INVESTED
             </div>
-            <div style={{ color: '#ff9800', fontSize: '28px', fontWeight: 'bold' }}>
-              {pendingPurchases.length}
+            <div style={{ color: '#4CAF50', fontSize: '24px', fontWeight: 'bold' }}>
+              {formatUnits(totalInvestment, 6)} USDC
             </div>
           </div>
         </div>
 
-        {/* Transaction Status */}
         {hash && (
           <div style={{
             marginBottom: '24px',
@@ -414,296 +484,172 @@ export function BuyerDashboard() {
           </div>
         )}
 
-        {/* Tabs */}
         <div style={{
           display: 'flex',
           gap: '8px',
           marginBottom: '32px',
           borderBottom: '1px solid #2C2C2C',
-          paddingBottom: '0'
+          paddingBottom: '0',
+          flexWrap: 'wrap'
         }}>
-          <button
+          <TabButton
+            label="Browse Properties"
+            isActive={selectedTab === 'browse'}
             onClick={() => setSelectedTab('browse')}
-            style={{
-              padding: '12px 24px',
-              backgroundColor: selectedTab === 'browse' ? '#111216' : 'transparent',
-              color: selectedTab === 'browse' ? '#CAAB5B' : '#6D6041',
-              border: 'none',
-              borderBottom: selectedTab === 'browse' ? '2px solid #CAAB5B' : '2px solid transparent',
-              fontSize: '14px',
-              fontWeight: 'bold',
-              cursor: 'pointer',
-              transition: 'all 0.2s'
-            }}
-          >
-            Browse Properties
-          </button>
-          <button
+          />
+          <TabButton
+            label="Fractional Investments"
+            isActive={selectedTab === 'fractional'}
             onClick={() => setSelectedTab('fractional')}
-            style={{
-              padding: '12px 24px',
-              backgroundColor: selectedTab === 'fractional' ? '#111216' : 'transparent',
-              color: selectedTab === 'fractional' ? '#CAAB5B' : '#6D6041',
-              border: 'none',
-              borderBottom: selectedTab === 'fractional' ? '2px solid #CAAB5B' : '2px solid transparent',
-              fontSize: '14px',
-              fontWeight: 'bold',
-              cursor: 'pointer',
-              transition: 'all 0.2s'
-            }}
-          >
-            Fractional Investments
-          </button>
-          <button
+          />
+          <TabButton
+            label="My Portfolio"
+            isActive={selectedTab === 'portfolio'}
             onClick={() => setSelectedTab('portfolio')}
-            style={{
-              padding: '12px 24px',
-              backgroundColor: selectedTab === 'portfolio' ? '#111216' : 'transparent',
-              color: selectedTab === 'portfolio' ? '#CAAB5B' : '#6D6041',
-              border: 'none',
-              borderBottom: selectedTab === 'portfolio' ? '2px solid #CAAB5B' : '2px solid transparent',
-              fontSize: '14px',
-              fontWeight: 'bold',
-              cursor: 'pointer',
-              transition: 'all 0.2s'
-            }}
-          >
-            My Portfolio
-          </button>
-          {pendingPurchases.length > 0 && (
-            <button
+            badge={portfolio?.length || 0}
+          />
+          <TabButton
+            label="My Properties"
+            isActive={selectedTab === 'properties'}
+            onClick={() => setSelectedTab('properties')}
+            badge={completedFullPurchases.length}
+          />
+          {pendingFullPurchases.length > 0 && (
+            <TabButton
+              label="Pending"
+              isActive={selectedTab === 'pending'}
               onClick={() => setSelectedTab('pending')}
-              style={{
-                padding: '12px 24px',
-                backgroundColor: selectedTab === 'pending' ? '#111216' : 'transparent',
-                color: selectedTab === 'pending' ? '#ff9800' : '#6D6041',
-                border: 'none',
-                borderBottom: selectedTab === 'pending' ? '2px solid #ff9800' : '2px solid transparent',
-                fontSize: '14px',
-                fontWeight: 'bold',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                position: 'relative'
-              }}
-            >
-              Pending
-              <span style={{
-                position: 'absolute',
-                top: '8px',
-                right: '8px',
-                backgroundColor: '#ff9800',
-                color: '#121317',
-                borderRadius: '50%',
-                width: '20px',
-                height: '20px',
-                fontSize: '11px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontWeight: 'bold'
-              }}>
-                {pendingPurchases.length}
-              </span>
-            </button>
+              badge={pendingFullPurchases.length}
+              color="#ff9800"
+            />
+          )}
+          {canceledPurchases.length > 0 && (
+            <TabButton
+              label="History"
+              isActive={selectedTab === 'history'}
+              onClick={() => setSelectedTab('history')}
+              badge={canceledPurchases.length}
+              color="#6D6041"
+            />
           )}
         </div>
 
-        {/* Browse Properties Tab */}
         {selectedTab === 'browse' && (
-          <>
-            {wholeAssets.length > 0 ? (
-              <>
-                <h2 style={{
-                  color: '#CAAB5B',
-                  fontSize: '24px',
-                  fontWeight: 'bold',
-                  marginBottom: '24px',
-                }}>
-                  Available Properties ({wholeAssets.length})
-                </h2>
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
-                  gap: '24px'
-                }}>
-                  {wholeAssets.map((asset) => (
-                    <AssetCard
-                      key={asset.tokenId.toString()}
-                      asset={asset}
-                      onPurchase={() => openPurchaseModal(asset, 'whole')}
-                      isPending={isPending}
-                      isConfirming={isConfirming}
-                      type="whole"
-                    />
-                  ))}
-                </div>
-              </>
-            ) : (
-              <div style={{
-                textAlign: 'center',
-                padding: '60px 20px',
-                backgroundColor: '#111216',
-                border: '1px solid #2C2C2C',
-                borderRadius: '12px',
-                color: '#6D6041'
-              }}>
-                <div style={{ fontSize: '48px', marginBottom: '16px' }}>🏠</div>
-                <div style={{ fontSize: '18px', marginBottom: '8px' }}>No Properties Available</div>
-                <div style={{ fontSize: '14px' }}>
-                  Check back later for new listings
-                </div>
-              </div>
-            )}
-          </>
+          <TabContent
+            title="Available Properties"
+            count={wholeAssets.length}
+            emptyIcon="🏠"
+            emptyMessage="No Properties Available"
+            emptySubtext="Check back later for new listings"
+          >
+            {wholeAssets.map((asset) => (
+              <AssetCard
+                key={asset.tokenId.toString()}
+                asset={asset}
+                onPurchase={(amount) => openPurchaseModal(asset, 'whole', amount)}
+                isPending={isPending}
+                isConfirming={isConfirming}
+                type="whole"
+              />
+            ))}
+          </TabContent>
         )}
 
-        {/* Fractional Investments Tab */}
         {selectedTab === 'fractional' && (
-          <>
-            {fractionalizedAssets.length > 0 ? (
-              <>
-                <h2 style={{
-                  color: '#CAAB5B',
-                  fontSize: '24px',
-                  fontWeight: 'bold',
-                  marginBottom: '24px',
-                }}>
-                  Fractional Investments ({fractionalizedAssets.length})
-                </h2>
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
-                  gap: '24px'
-                }}>
-                  {fractionalizedAssets.map((asset) => (
-                    <AssetCard
-                      key={asset.tokenId.toString()}
-                      asset={asset}
-                      onPurchase={() => openPurchaseModal(asset, 'fractional')}
-                      isPending={isPending}
-                      isConfirming={isConfirming}
-                      type="fractional"
-                      fractionalAmount={fractionalAmount}
-                      setFractionalAmount={setFractionalAmount}
-                    />
-                  ))}
-                </div>
-              </>
-            ) : (
-              <div style={{
-                textAlign: 'center',
-                padding: '60px 20px',
-                backgroundColor: '#111216',
-                border: '1px solid #2C2C2C',
-                borderRadius: '12px',
-                color: '#6D6041'
-              }}>
-                <div style={{ fontSize: '48px', marginBottom: '16px' }}>🔹</div>
-                <div style={{ fontSize: '18px', marginBottom: '8px' }}>No Fractional Assets Available</div>
-                <div style={{ fontSize: '14px' }}>
-                  Check back later for fractional investment opportunities
-                </div>
-              </div>
-            )}
-          </>
+          <TabContent
+            title="Fractional Investments"
+            count={fractionalizedAssets.length}
+            emptyIcon="🔹"
+            emptyMessage="No Fractional Assets Available"
+            emptySubtext="Check back later for fractional investment opportunities"
+          >
+            {fractionalizedAssets.map((asset) => (
+              <AssetCard
+                key={asset.tokenId.toString()}
+                asset={asset}
+                onPurchase={(amount) => openPurchaseModal(asset, 'fractional', amount)}
+                isPending={isPending}
+                isConfirming={isConfirming}
+                type="fractional"
+              />
+            ))}
+          </TabContent>
         )}
 
-        {/* Portfolio Tab */}
         {selectedTab === 'portfolio' && (
-          <>
-            {portfolio && portfolio.length > 0 ? (
-              <>
-                <h2 style={{
-                  color: '#4CAF50',
-                  fontSize: '24px',
-                  fontWeight: 'bold',
-                  marginBottom: '24px',
-                }}>
-                  My Portfolio ({portfolio.length})
-                </h2>
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
-                  gap: '24px'
-                }}>
-                  {portfolio.map((item) => (
-                    <PortfolioCard
-                      key={item.tokenId.toString()}
-                      item={item}
-                    />
-                  ))}
-                </div>
-              </>
-            ) : (
-              <div style={{
-                textAlign: 'center',
-                padding: '60px 20px',
-                backgroundColor: '#111216',
-                border: '1px solid #2C2C2C',
-                borderRadius: '12px',
-                color: '#6D6041'
-              }}>
-                <div style={{ fontSize: '48px', marginBottom: '16px' }}>📊</div>
-                <div style={{ fontSize: '18px', marginBottom: '8px' }}>No Investments Yet</div>
-                <div style={{ fontSize: '14px' }}>
-                  Start investing in fractional properties to build your portfolio
-                </div>
-              </div>
-            )}
-          </>
+          <TabContent
+            title="My Fractional Portfolio"
+            count={portfolio?.length || 0}
+            emptyIcon="📊"
+            emptyMessage="No Fractional Investments Yet"
+            emptySubtext="Start investing in fractional properties to build your portfolio"
+          >
+            {portfolio?.map((item) => (
+              <PortfolioCard
+                key={item.tokenId.toString()}
+                item={item}
+                onCancel={openCancelFractionalModal}
+              />
+            ))}
+          </TabContent>
         )}
 
-        {/* Pending Purchases Tab */}
+        {selectedTab === 'properties' && (
+          <TabContent
+            title="My Properties"
+            count={completedFullPurchases.length}
+            emptyIcon="🏡"
+            emptyMessage="No Properties Owned Yet"
+            emptySubtext="Purchase full properties to see them here"
+          >
+            {completedFullPurchases.map((asset) => (
+              <OwnedPropertyCard
+                key={asset.tokenId.toString()}
+                asset={asset}
+              />
+            ))}
+          </TabContent>
+        )}
+
         {selectedTab === 'pending' && (
-          <>
-            {pendingPurchases.length > 0 ? (
-              <>
-                <h2 style={{
-                  color: '#ff9800',
-                  fontSize: '24px',
-                  fontWeight: 'bold',
-                  marginBottom: '24px',
-                }}>
-                  Pending Purchases ({pendingPurchases.length})
-                </h2>
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
-                  gap: '24px'
-                }}>
-                  {pendingPurchases.map((asset) => (
-                    <PendingPurchaseCard
-                      key={asset.tokenId.toString()}
-                      asset={asset}
-                      onCancel={() => handleCancelPurchase(asset.tokenId)}
-                      isPending={isPending}
-                      isConfirming={isConfirming}
-                      cancellationPenalty={cancellationPenalty}
-                    />
-                  ))}
-                </div>
-              </>
-            ) : (
-              <div style={{
-                textAlign: 'center',
-                padding: '60px 20px',
-                backgroundColor: '#111216',
-                border: '1px solid #2C2C2C',
-                borderRadius: '12px',
-                color: '#6D6041'
-              }}>
-                <div style={{ fontSize: '48px', marginBottom: '16px' }}>✓</div>
-                <div style={{ fontSize: '18px', marginBottom: '8px' }}>No Pending Purchases</div>
-                <div style={{ fontSize: '14px' }}>
-                  All your purchases have been confirmed
-                </div>
-              </div>
-            )}
-          </>
+          <TabContent
+            title="Pending Purchases"
+            count={pendingFullPurchases.length}
+            emptyIcon="✓"
+            emptyMessage="No Pending Purchases"
+            emptySubtext="All your purchases have been confirmed"
+          >
+            {pendingFullPurchases.map((asset) => (
+              <PendingPurchaseCard
+                key={asset.tokenId.toString()}
+                asset={asset}
+                onCancel={() => handleCancelFullPurchase(asset.tokenId)}
+                isPending={isPending}
+                isConfirming={isConfirming}
+                cancellationPenalty={cancellationPenalty}
+              />
+            ))}
+          </TabContent>
+        )}
+
+        {selectedTab === 'history' && (
+          <TabContent
+            title="Purchase History"
+            count={canceledPurchases.length}
+            emptyIcon="📜"
+            emptyMessage="No Purchase History"
+            emptySubtext="Your canceled purchases will appear here"
+          >
+            {canceledPurchases.map((asset) => (
+              <CanceledPurchaseCard
+                key={asset.tokenId.toString()}
+                asset={asset}
+              />
+            ))}
+          </TabContent>
         )}
       </div>
 
-      {/* Purchase Modal */}
       {showPurchaseModal && selectedAsset && (
         <PurchaseModal
           asset={selectedAsset}
@@ -724,13 +670,120 @@ export function BuyerDashboard() {
           isConfirming={isConfirming}
         />
       )}
+
+      {showCancelModal && selectedAsset && (
+        <CancelFractionalModal
+          asset={selectedAsset}
+          cancelAmount={cancelAmount}
+          setCancelAmount={setCancelAmount}
+          onClose={() => {
+            setShowCancelModal(false);
+            setSelectedAsset(null);
+            setCancelAmount('');
+          }}
+          onCancel={handleCancelFractionalPurchase}
+          isPending={isPending}
+          isConfirming={isConfirming}
+          portfolio={portfolio}
+        />
+      )}
     </div>
   );
 }
 
-// Asset Card Component
-function AssetCard({ asset, onPurchase, isPending, isConfirming, type, fractionalAmount, setFractionalAmount }) {
+function TabButton({ label, isActive, onClick, badge, color = '#CAAB5B' }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        padding: '12px 24px',
+        backgroundColor: isActive ? '#111216' : 'transparent',
+        color: isActive ? color : '#6D6041',
+        border: 'none',
+        borderBottom: isActive ? `2px solid ${color}` : '2px solid transparent',
+        fontSize: '14px',
+        fontWeight: 'bold',
+        cursor: 'pointer',
+        transition: 'all 0.2s',
+        position: 'relative'
+      }}
+    >
+      {label}
+      {badge !== undefined && badge > 0 && (
+        <span style={{
+          position: 'absolute',
+          top: '8px',
+          right: '8px',
+          backgroundColor: color,
+          color: color === '#6D6041' ? '#E1E2E2' : '#121317',
+          borderRadius: '50%',
+          minWidth: '20px',
+          height: '20px',
+          fontSize: '11px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontWeight: 'bold',
+          padding: '0 6px'
+        }}>
+          {badge}
+        </span>
+      )}
+    </button>
+  );
+}
+
+function TabContent({ title, count, emptyIcon, emptyMessage, emptySubtext, children }) {
+  const hasContent = Array.isArray(children) ? children.length > 0 : children;
+
+  return (
+    <>
+      {hasContent ? (
+        <>
+          <h2 style={{
+            color: '#CAAB5B',
+            fontSize: '24px',
+            fontWeight: 'bold',
+            marginBottom: '24px',
+          }}>
+            {title} ({count})
+          </h2>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
+            gap: '24px'
+          }}>
+            {children}
+          </div>
+        </>
+      ) : (
+        <div style={{
+          textAlign: 'center',
+          padding: '60px 20px',
+          backgroundColor: '#111216',
+          border: '1px solid #2C2C2C',
+          borderRadius: '12px',
+          color: '#6D6041'
+        }}>
+          <div style={{ fontSize: '48px', marginBottom: '16px' }}>{emptyIcon}</div>
+          <div style={{ fontSize: '18px', marginBottom: '8px' }}>{emptyMessage}</div>
+          <div style={{ fontSize: '14px' }}>{emptySubtext}</div>
+        </div>
+      )}
+    </>
+  );
+}
+
+function AssetCard({ asset, onPurchase, isPending, isConfirming, type }) {
   const [localAmount, setLocalAmount] = useState('1');
+
+  const handlePurchaseClick = () => {
+    if (type === 'fractional') {
+      onPurchase(localAmount);
+    } else {
+      onPurchase('');
+    }
+  };
 
   return (
     <div
@@ -750,7 +803,6 @@ function AssetCard({ asset, onPurchase, isPending, isConfirming, type, fractiona
         e.currentTarget.style.boxShadow = 'none';
       }}
     >
-      {/* Header */}
       <div style={{
         display: 'flex',
         justifyContent: 'space-between',
@@ -771,7 +823,7 @@ function AssetCard({ asset, onPurchase, isPending, isConfirming, type, fractiona
         </div>
         <div style={{
           backgroundColor: type === 'fractional' ? '#4CAF50' : '#CAAB5B',
-          color: '#fff',
+          color: type === 'fractional' ? '#fff' : '#121317',
           padding: '6px 12px',
           borderRadius: '6px',
           fontSize: '12px',
@@ -781,7 +833,6 @@ function AssetCard({ asset, onPurchase, isPending, isConfirming, type, fractiona
         </div>
       </div>
 
-      {/* Price */}
       <div style={{ marginBottom: '20px' }}>
         <div style={{
           color: '#6D6041',
@@ -803,7 +854,6 @@ function AssetCard({ asset, onPurchase, isPending, isConfirming, type, fractiona
         </div>
       </div>
 
-      {/* Fractional Info */}
       {type === 'fractional' && (
         <div style={{
           backgroundColor: '#121317',
@@ -836,7 +886,6 @@ function AssetCard({ asset, onPurchase, isPending, isConfirming, type, fractiona
             </div>
           </div>
 
-          {/* Amount Input */}
           <div>
             <label style={{
               color: '#6D6041',
@@ -871,7 +920,6 @@ function AssetCard({ asset, onPurchase, isPending, isConfirming, type, fractiona
         </div>
       )}
 
-      {/* Seller */}
       <div style={{
         display: 'flex',
         justifyContent: 'space-between',
@@ -889,14 +937,8 @@ function AssetCard({ asset, onPurchase, isPending, isConfirming, type, fractiona
         </div>
       </div>
 
-      {/* Buy Button */}
       <button
-        onClick={() => {
-          if (type === 'fractional') {
-            setFractionalAmount(localAmount);
-          }
-          onPurchase();
-        }}
+        onClick={handlePurchaseClick}
         disabled={isPending || isConfirming || (type === 'fractional' && (!localAmount || Number(localAmount) <= 0))}
         style={{
           width: '100%',
@@ -927,8 +969,7 @@ function AssetCard({ asset, onPurchase, isPending, isConfirming, type, fractiona
   );
 }
 
-// Portfolio Card Component
-function PortfolioCard({ item }) {
+function PortfolioCard({ item, onCancel }) {
   return (
     <div style={{
       backgroundColor: '#111216',
@@ -985,14 +1026,15 @@ function PortfolioCard({ item }) {
             Ownership %
           </div>
           <div style={{ color: '#4CAF50', fontSize: '20px', fontWeight: 'bold' }}>
-            {item.ownershipPercentage.toString()}%
+            {(Number(item.ownershipPercentage) / 100).toFixed(2)}%
           </div>
         </div>
       </div>
 
       <div style={{
         paddingTop: '16px',
-        borderTop: '1px solid #2C2C2C'
+        borderTop: '1px solid #2C2C2C',
+        marginBottom: '16px'
       }}>
         <div style={{ color: '#6D6041', fontSize: '12px', marginBottom: '4px' }}>
           Investment Value
@@ -1001,15 +1043,120 @@ function PortfolioCard({ item }) {
           {formatUnits(item.investmentValue, 6)} USDC
         </div>
       </div>
+
+      <button
+        onClick={() => onCancel(item)}
+        style={{
+          width: '100%',
+          padding: '12px',
+          backgroundColor: '#f44336',
+          color: '#fff',
+          border: 'none',
+          borderRadius: '8px',
+          fontSize: '14px',
+          fontWeight: 'bold',
+          cursor: 'pointer',
+          transition: 'opacity 0.2s',
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.opacity = '0.9';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.opacity = '1';
+        }}
+      >
+        Cancel Fractional Investment
+      </button>
     </div>
   );
 }
 
-// Pending Purchase Card Component
+function OwnedPropertyCard({ asset }) {
+  return (
+    <div style={{
+      backgroundColor: '#111216',
+      border: '1px solid #4CAF50',
+      borderRadius: '12px',
+      padding: '24px',
+    }}>
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: '20px',
+        paddingBottom: '16px',
+        borderBottom: '1px solid #2C2C2C'
+      }}>
+        <div style={{
+          backgroundColor: '#CAAB5B',
+          color: '#121317',
+          padding: '6px 12px',
+          borderRadius: '6px',
+          fontSize: '14px',
+          fontWeight: 'bold'
+        }}>
+          #{asset.tokenId.toString()}
+        </div>
+        <div style={{
+          backgroundColor: '#4CAF50',
+          color: '#fff',
+          padding: '6px 12px',
+          borderRadius: '6px',
+          fontSize: '12px',
+          fontWeight: '500'
+        }}>
+          ✓ Owned
+        </div>
+      </div>
+
+      <div style={{ marginBottom: '20px' }}>
+        <div style={{ color: '#6D6041', fontSize: '12px', marginBottom: '4px' }}>
+          Purchase Price
+        </div>
+        <div style={{ color: '#CAAB5B', fontSize: '28px', fontWeight: 'bold' }}>
+          {formatUnits(asset.price, 6)} USDC
+        </div>
+      </div>
+
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        paddingTop: '16px',
+        borderTop: '1px solid #2C2C2C',
+        marginBottom: '16px'
+      }}>
+        <div style={{ color: '#6D6041', fontSize: '12px' }}>Seller</div>
+        <div style={{
+          color: '#E1E2E2',
+          fontSize: '12px',
+          fontFamily: 'monospace'
+        }}>
+          {asset.seller.slice(0, 6)}...{asset.seller.slice(-4)}
+        </div>
+      </div>
+
+      <div style={{
+        backgroundColor: '#4CAF5020',
+        border: '1px solid #4CAF50',
+        borderRadius: '8px',
+        padding: '12px',
+        textAlign: 'center',
+        color: '#4CAF50',
+        fontSize: '14px',
+        fontWeight: 'bold'
+      }}>
+        🏡 You own this property
+      </div>
+    </div>
+  );
+}
+
 function PendingPurchaseCard({ asset, onCancel, isPending, isConfirming, cancellationPenalty }) {
   const penaltyAmount = cancellationPenalty 
-    ? (asset.price * cancellationPenalty) / BigInt(100)
+    ? (BigInt(asset.price.toString()) * BigInt(cancellationPenalty.toString())) / BigInt(100)
     : BigInt(0);
+
+  const refundAmount = BigInt(asset.price.toString()) - penaltyAmount;
 
   return (
     <div style={{
@@ -1066,11 +1213,37 @@ function PendingPurchaseCard({ asset, onCancel, isPending, isConfirming, cancell
         fontSize: '12px',
         color: '#E1E2E2'
       }}>
-        <div style={{ fontWeight: 'bold', marginBottom: '4px', color: '#ff9800' }}>
+        <div style={{ fontWeight: 'bold', marginBottom: '8px', color: '#ff9800' }}>
           ⏳ Awaiting Seller Confirmation
         </div>
-        The seller needs to confirm receipt of payment. You can cancel this purchase, but a{' '}
-        {cancellationPenalty?.toString()}% penalty ({formatUnits(penaltyAmount, 6)} USDC) will apply.
+        <div style={{ marginBottom: '8px' }}>
+          The seller needs to confirm receipt of payment. You can cancel this purchase, but a penalty will apply:
+        </div>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: '8px',
+          marginTop: '12px',
+          paddingTop: '12px',
+          borderTop: '1px solid #ff9800'
+        }}>
+          <div>
+            <div style={{ color: '#6D6041', fontSize: '11px', marginBottom: '4px' }}>
+              Penalty ({cancellationPenalty?.toString()}%)
+            </div>
+            <div style={{ color: '#f44336', fontSize: '14px', fontWeight: 'bold' }}>
+              -{formatUnits(penaltyAmount, 6)} USDC
+            </div>
+          </div>
+          <div>
+            <div style={{ color: '#6D6041', fontSize: '11px', marginBottom: '4px' }}>
+              You'll Receive
+            </div>
+            <div style={{ color: '#4CAF50', fontSize: '14px', fontWeight: 'bold' }}>
+              {formatUnits(refundAmount, 6)} USDC
+            </div>
+          </div>
+        </div>
       </div>
 
       <button
@@ -1088,13 +1261,79 @@ function PendingPurchaseCard({ asset, onCancel, isPending, isConfirming, cancell
           cursor: isPending || isConfirming ? 'not-allowed' : 'pointer',
         }}
       >
-        Cancel Purchase (with penalty)
+        {isPending ? 'Confirm in wallet...' : isConfirming ? 'Canceling...' : 'Cancel Purchase'}
       </button>
     </div>
   );
 }
 
-// Purchase Modal Component
+function CanceledPurchaseCard({ asset }) {
+  return (
+    <div style={{
+      backgroundColor: '#111216',
+      border: '1px solid #6D6041',
+      borderRadius: '12px',
+      padding: '24px',
+      opacity: 0.7
+    }}>
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: '20px',
+        paddingBottom: '16px',
+        borderBottom: '1px solid #2C2C2C'
+      }}>
+        <div style={{
+          backgroundColor: '#6D6041',
+          color: '#E1E2E2',
+          padding: '6px 12px',
+          borderRadius: '6px',
+          fontSize: '14px',
+          fontWeight: 'bold'
+        }}>
+          #{asset.tokenId.toString()}
+        </div>
+        <div style={{
+          backgroundColor: '#6D6041',
+          color: '#E1E2E2',
+          padding: '6px 12px',
+          borderRadius: '6px',
+          fontSize: '12px',
+          fontWeight: '500'
+        }}>
+          ✕ Canceled
+        </div>
+      </div>
+
+      <div style={{ marginBottom: '20px' }}>
+        <div style={{ color: '#6D6041', fontSize: '12px', marginBottom: '4px' }}>
+          Purchase Price
+        </div>
+        <div style={{ color: '#6D6041', fontSize: '28px', fontWeight: 'bold' }}>
+          {formatUnits(asset.price, 6)} USDC
+        </div>
+      </div>
+
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        paddingTop: '16px',
+        borderTop: '1px solid #2C2C2C'
+      }}>
+        <div style={{ color: '#6D6041', fontSize: '12px' }}>Status</div>
+        <div style={{
+          color: '#6D6041',
+          fontSize: '12px',
+          fontWeight: 'bold'
+        }}>
+          Purchase was canceled
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function PurchaseModal({
   asset,
   purchaseType,
@@ -1110,9 +1349,9 @@ function PurchaseModal({
 }) {
   const totalPrice = purchaseType === 'whole'
     ? asset.price
-    : BigInt(fractionalAmount || 0) * asset.pricePerFractionalToken;
+    : BigInt(fractionalAmount || '0') * asset.pricePerFractionalToken;
 
-  const hasEnoughBalance = usdcBalance && usdcBalance >= totalPrice;
+  const hasEnoughBalance = usdcBalance && BigInt(usdcBalance.toString()) >= totalPrice;
 
   return (
     <div style={{
@@ -1169,7 +1408,6 @@ function PurchaseModal({
           </button>
         </div>
 
-        {/* Asset Details */}
         <div style={{
           backgroundColor: '#121317',
           border: '1px solid #2C2C2C',
@@ -1224,7 +1462,6 @@ function PurchaseModal({
           </div>
         </div>
 
-        {/* Balance Check */}
         <div style={{
           backgroundColor: hasEnoughBalance ? '#4CAF5020' : '#f4433620',
           border: `1px solid ${hasEnoughBalance ? '#4CAF50' : '#f44336'}`,
@@ -1265,8 +1502,7 @@ function PurchaseModal({
           )}
         </div>
 
-        {/* Approval Status */}
-        {needsApproval && (
+        {needsApproval && hasEnoughBalance && (
           <div style={{
             backgroundColor: '#ff980020',
             border: '1px solid #ff9800',
@@ -1283,13 +1519,12 @@ function PurchaseModal({
           </div>
         )}
 
-        {/* Action Buttons */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: needsApproval ? '1fr' : '1fr 1fr',
+          gridTemplateColumns: needsApproval && hasEnoughBalance ? '1fr' : '1fr 1fr',
           gap: '12px'
         }}>
-          {!needsApproval && (
+          {(!needsApproval || !hasEnoughBalance) && (
             <button
               onClick={onClose}
               disabled={isPending || isConfirming}
@@ -1307,22 +1542,22 @@ function PurchaseModal({
               Cancel
             </button>
           )}
-          {needsApproval ? (
+          {needsApproval && hasEnoughBalance ? (
             <button
               onClick={() => onApprove(totalPrice)}
-              disabled={isPending || isConfirming || !hasEnoughBalance}
+              disabled={isPending || isConfirming}
               style={{
                 padding: '14px',
-                backgroundColor: isPending || isConfirming || !hasEnoughBalance ? '#2C2C2C' : '#ff9800',
-                color: isPending || isConfirming || !hasEnoughBalance ? '#6D6041' : '#fff',
+                backgroundColor: isPending || isConfirming ? '#2C2C2C' : '#ff9800',
+                color: isPending || isConfirming ? '#6D6041' : '#fff',
                 border: 'none',
                 borderRadius: '12px',
                 fontSize: '14px',
                 fontWeight: 'bold',
-                cursor: isPending || isConfirming || !hasEnoughBalance ? 'not-allowed' : 'pointer',
+                cursor: isPending || isConfirming ? 'not-allowed' : 'pointer',
               }}
             >
-              {isPending ? 'Confirm in wallet...' : isConfirming ? 'Approving...' : '✓ Approve USDC'}
+              {isPending ? 'Confirm in wallet...' : isConfirming ? 'Approving...' : '1. Approve USDC'}
             </button>
           ) : (
             <button
@@ -1339,9 +1574,199 @@ function PurchaseModal({
                 cursor: isPending || isConfirming || !hasEnoughBalance ? 'not-allowed' : 'pointer',
               }}
             >
-              {isPending ? 'Confirm in wallet...' : isConfirming ? 'Processing...' : '🛒 Purchase'}
+              {isPending ? 'Confirm in wallet...' : isConfirming ? 'Processing...' : needsApproval ? 'Approve First' : '2. Purchase'}
             </button>
           )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CancelFractionalModal({
+  asset,
+  cancelAmount,
+  setCancelAmount,
+  onClose,
+  onCancel,
+  isPending,
+  isConfirming,
+  portfolio
+}) {
+  const portfolioItem = portfolio?.find(
+    item => item.tokenId.toString() === asset.tokenId.toString()
+  );
+
+  const maxTokens = portfolioItem?.fractionalTokensOwned || BigInt(0);
+
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0, 0, 0, 0.8)',
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      zIndex: 1000,
+      padding: '20px'
+    }}>
+      <div style={{
+        backgroundColor: '#111216',
+        border: '1px solid #2C2C2C',
+        borderRadius: '16px',
+        padding: '32px',
+        maxWidth: '500px',
+        width: '100%'
+      }}>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '24px'
+        }}>
+          <h2 style={{
+            color: '#f44336',
+            fontSize: '24px',
+            fontWeight: 'bold',
+            margin: 0
+          }}>
+            Cancel Fractional Investment
+          </h2>
+          <button
+            onClick={onClose}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#6D6041',
+              fontSize: '24px',
+              cursor: 'pointer',
+              padding: '0',
+              width: '32px',
+              height: '32px'
+            }}
+          >
+            ×
+          </button>
+        </div>
+
+        <div style={{
+          backgroundColor: '#121317',
+          border: '1px solid #2C2C2C',
+          borderRadius: '12px',
+          padding: '20px',
+          marginBottom: '24px'
+        }}>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            marginBottom: '12px'
+          }}>
+            <span style={{ color: '#6D6041', fontSize: '14px' }}>Token ID</span>
+            <span style={{ color: '#E1E2E2', fontSize: '14px', fontWeight: 'bold' }}>
+              #{asset.tokenId.toString()}
+            </span>
+          </div>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+          }}>
+            <span style={{ color: '#6D6041', fontSize: '14px' }}>Tokens Owned</span>
+            <span style={{ color: '#4CAF50', fontSize: '14px', fontWeight: 'bold' }}>
+              {maxTokens.toString()}
+            </span>
+          </div>
+        </div>
+
+        <div style={{ marginBottom: '24px' }}>
+          <label style={{
+            color: '#6D6041',
+            fontSize: '14px',
+            display: 'block',
+            marginBottom: '8px'
+          }}>
+            Number of Tokens to Cancel
+          </label>
+          <input
+            type="number"
+            value={cancelAmount}
+            onChange={(e) => setCancelAmount(e.target.value)}
+            min="1"
+            max={maxTokens.toString()}
+            placeholder="Enter amount"
+            style={{
+              width: '100%',
+              padding: '12px',
+              backgroundColor: '#121317',
+              border: '1px solid #2C2C2C',
+              borderRadius: '8px',
+              color: '#E1E2E2',
+              fontSize: '14px',
+            }}
+          />
+          <div style={{
+            color: '#6D6041',
+            fontSize: '12px',
+            marginTop: '8px'
+          }}>
+            Maximum: {maxTokens.toString()} tokens
+          </div>
+        </div>
+
+        <div style={{
+          backgroundColor: '#f4433620',
+          border: '1px solid #f44336',
+          borderRadius: '12px',
+          padding: '16px',
+          marginBottom: '24px',
+          fontSize: '14px',
+          color: '#E1E2E2'
+        }}>
+          <div style={{ fontWeight: 'bold', marginBottom: '8px', color: '#f44336' }}>
+            ⚠️ Warning
+          </div>
+          Canceling will burn your tokens and refund your investment. A penalty may apply.
+        </div>
+
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: '12px'
+        }}>
+          <button
+            onClick={onClose}
+            disabled={isPending || isConfirming}
+            style={{
+              padding: '14px',
+              backgroundColor: '#2C2C2C',
+              color: '#E1E2E2',
+              border: 'none',
+              borderRadius: '12px',
+              fontSize: '14px',
+              fontWeight: 'bold',
+              cursor: isPending || isConfirming ? 'not-allowed' : 'pointer',
+            }}
+          >
+            Go Back
+          </button>
+          <button
+            onClick={onCancel}
+            disabled={isPending || isConfirming || !cancelAmount || Number(cancelAmount) <= 0 || BigInt(cancelAmount) > maxTokens}
+            style={{
+              padding: '14px',
+              backgroundColor: isPending || isConfirming || !cancelAmount || Number(cancelAmount) <= 0 || BigInt(cancelAmount) > maxTokens ? '#2C2C2C' : '#f44336',
+              color: isPending || isConfirming || !cancelAmount || Number(cancelAmount) <= 0 || BigInt(cancelAmount) > maxTokens ? '#6D6041' : '#fff',
+              border: 'none',
+              borderRadius: '12px',
+              fontSize: '14px',
+              fontWeight: 'bold',
+              cursor: isPending || isConfirming || !cancelAmount || Number(cancelAmount) <= 0 || BigInt(cancelAmount) > maxTokens ? 'not-allowed' : 'pointer',
+            }}
+          >
+            {isPending ? 'Confirm in wallet...' : isConfirming ? 'Canceling...' : 'Cancel Investment'}
+          </button>
         </div>
       </div>
     </div>
