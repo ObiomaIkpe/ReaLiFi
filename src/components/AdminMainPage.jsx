@@ -1,1263 +1,868 @@
-import { useEffect, useState } from 'react';
-import { useReadContract, useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
-import { REAL_ESTATE_DAPP, REAL_ESTATE_DAPP_ADDRESS, MOCK_USDC, MOCK_USDC_ADDRESS } from '../config/contract.config';
-import { formatUnits, parseUnits } from 'viem';
+import React, { useState, useEffect } from 'react';
+import { Shield, Users, CheckCircle, DollarSign, UserPlus, UserMinus, Key, RefreshCw, AlertCircle, Wallet, Settings, ExternalLink, Home } from 'lucide-react';
 
-export function AdminDashboard() {
-  const { address, isConnected } = useAccount();
-  const [actionType, setActionType] = useState(null);
-  const [showModal, setShowModal] = useState(false);
-  const [selectedAsset, setSelectedAsset] = useState(null);
-  const [selectedTab, setSelectedTab] = useState('verification');
-  const [retryCount, setRetryCount] = useState(0);
-  const [isChecking, setIsChecking] = useState(true);
-  const [countdown, setCountdown] = useState(10);
+export const AdminDashboard = () => {
+  const [activeTab, setActiveTab] = useState('assets');
+  const [notification, setNotification] = useState(null);
+  const [assets, setAssets] = useState(mockAssets);
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [loading, setLoading] = useState(false);
 
-  const [newAdminAddress, setNewAdminAddress] = useState('');
-  const [removeAdminAddress, setRemoveAdminAddress] = useState('');
-  
+  // Form states
+  const [tokenIdToVerify, setTokenIdToVerify] = useState('');
+  const [tokenIdForWithdraw, setTokenIdForWithdraw] = useState('');
+  const [canWithdraw, setCanWithdraw] = useState(true);
   const [withdrawRecipient, setWithdrawRecipient] = useState('');
   const [withdrawAmount, setWithdrawAmount] = useState('');
+  const [usdcMintAmount, setUsdcMintAmount] = useState('');
+  const [adminToAdd, setAdminToAdd] = useState('');
+  const [adminToRemove, setAdminToRemove] = useState('');
+  const [adminToCheck, setAdminToCheck] = useState('');
+  const [newOwner, setNewOwner] = useState('');
+  const [adminCheckResult, setAdminCheckResult] = useState(null);
 
-  const { data: isAdmin, refetch: refetchAdminStatus, isLoading: isLoading,
-  isError: isError } = useReadContract({
-    address: REAL_ESTATE_DAPP_ADDRESS,
-    abi: REAL_ESTATE_DAPP,
-    functionName: 'isAdmin',
-    args: address ? [address] : undefined,
-    query: {
-    retry: 3, // Retry 3 times on failure
-    retryDelay: 1000, // Wait 1 second between retries
-  }
-  });
+  // Mock wallet connection
+  const isConnected = true;
+  const address = '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb';
+  const isOwner = true;
+  const isAdmin = true;
+  const ownerAddress = '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb';
+  const contractAddress = '0xd1a4710C80A22eBfcc531c888ecFc9f402529f6F';
 
-  const { data: contractOwner } = useReadContract({
-    address: REAL_ESTATE_DAPP_ADDRESS,
-    abi: REAL_ESTATE_DAPP,
-    functionName: 'owner',
-    args: [],
-  });
-
-  const isOwner = address && contractOwner && address.toLowerCase() === contractOwner.toLowerCase();
-
-  // Get all assets
-  const { data: allAssets, refetch: refetchAssets } = useReadContract({
-    address: REAL_ESTATE_DAPP_ADDRESS,
-    abi: REAL_ESTATE_DAPP,
-    functionName: 'fetchAllAssetsWithDisplayInfo',
-    args: [],
-  });
-
-  // Get contract USDC balance
-  const { data: contractBalance } = useReadContract({
-    address: MOCK_USDC_ADDRESS,
-    abi: MOCK_USDC,
-    functionName: 'balanceOf',
-    args: [REAL_ESTATE_DAPP_ADDRESS],
-  });
-
-  useEffect(() => {
-  let countdownInterval;
-  let retryTimeout;
-
-  if (address && !isAdmin && !isOwner && retryCount < 3) {
-    // Start countdown
-    setCountdown(10);
-    countdownInterval = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          clearInterval(countdownInterval);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    // Retry after 30 seconds
-    retryTimeout = setTimeout(() => {
-      refetchAdminStatus();
-      setRetryCount((prev) => prev + 1);
-    }, 10000);
-  } else if (isAdmin || isOwner) {
-    // Access granted, stop checking
-    setIsChecking(false);
-    setRetryCount(0);
-  } else if (retryCount >= 3) {
-    // Max retries reached
-    setIsChecking(false);
-  }
-
-  return () => {
-    clearInterval(countdownInterval);
-    clearTimeout(retryTimeout);
+  const showNotification = (message, type = 'success') => {
+    setNotification({ message, type });
+    setTimeout(() => setNotification(null), 5000);
   };
-}, [address, isAdmin, isOwner, retryCount, refetchAdminStatus]);
 
+  const formatPrice = (price) => {
+    return (Number(price) / 1000000).toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  };
 
-  // Transaction handling
-  const { data: hash, writeContract, isPending, error } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
-
-  // Filter assets
-  const unverifiedAssets = allAssets?.filter(asset => !asset.verified && !asset.sold) || [];
-  const verifiedAssets = allAssets?.filter(asset => asset.verified) || [];
-
-
-
-  // Handle verify asset
-  const handleVerifyAsset = async () => {
-    if (!selectedAsset) return;
-    try {
-      writeContract({
-        address: REAL_ESTATE_DAPP_ADDRESS,
-        abi: REAL_ESTATE_DAPP,
-        functionName: 'verifyAsset',
-        args: [selectedAsset.tokenId],
-      });
-    } catch (err) {
-      console.error('Error verifying asset:', err);
+  const filteredAssets = React.useMemo(() => {
+    switch (filterStatus) {
+      case 'verified':
+        return assets.filter(asset => asset.verified && !asset.sold);
+      case 'unverified':
+        return assets.filter(asset => !asset.verified && !asset.sold);
+      case 'sold':
+        return assets.filter(asset => asset.sold);
+      default:
+        return assets;
     }
+  }, [assets, filterStatus]);
+
+  const handleAssetClick = (tokenId) => {
+    showNotification(`Navigating to asset #${tokenId}...`, 'success');
+    // In real app: navigate(`/asset/${tokenId}`);
   };
 
-  // Handle add admin
-  const handleAddAdmin = async () => {
-    if (!newAdminAddress) return;
-    try {
-      writeContract({
-        address: REAL_ESTATE_DAPP_ADDRESS,
-        abi: REAL_ESTATE_DAPP,
-        functionName: 'addAdmin',
-        args: [newAdminAddress],
-      });
-    } catch (err) {
-      console.error('Error adding admin:', err);
+  const verifyAsset = async () => {
+    if (!tokenIdToVerify) {
+      showNotification('Please enter a token ID', 'error');
+      return;
     }
-  };
-
-  // Handle remove admin
-  const handleRemoveAdmin = async () => {
-    if (!removeAdminAddress) return;
-    try {
-      writeContract({
-        address: REAL_ESTATE_DAPP_ADDRESS,
-        abi: REAL_ESTATE_DAPP,
-        functionName: 'removeAdmin',
-        args: [removeAdminAddress],
-      });
-    } catch (err) {
-      console.error('Error removing admin:', err);
-    }
-  };
-
-  // Handle withdraw USDC
-  const handleWithdrawUSDC = async () => {
-    if (!withdrawRecipient || !withdrawAmount) return;
-    try {
-      writeContract({
-        address: REAL_ESTATE_DAPP_ADDRESS,
-        abi: REAL_ESTATE_DAPP,
-        functionName: 'withdrawUSDC',
-        args: [withdrawRecipient, parseUnits(withdrawAmount, 6)],
-      });
-    } catch (err) {
-      console.error('Error withdrawing USDC:', err);
-    }
-  };
-
-  // Reset state on success
-  if (isSuccess) {
+    setLoading(true);
     setTimeout(() => {
-      setShowModal(false);
-      setSelectedAsset(null);
-      setActionType(null);
-      setNewAdminAddress('');
-      setRemoveAdminAddress('');
+      const updatedAssets = assets.map(asset => 
+        asset.tokenId === parseInt(tokenIdToVerify) 
+          ? { ...asset, verified: true } 
+          : asset
+      );
+      setAssets(updatedAssets);
+      showNotification(`Asset #${tokenIdToVerify} verified successfully!`, 'success');
+      setTokenIdToVerify('');
+      setLoading(false);
+    }, 1500);
+  };
+
+  const setBuyerWithdrawPermission = async () => {
+    if (!tokenIdForWithdraw) {
+      showNotification('Please enter a token ID', 'error');
+      return;
+    }
+    setLoading(true);
+    setTimeout(() => {
+      showNotification(`Withdrawal permission updated for token #${tokenIdForWithdraw}`, 'success');
+      setTokenIdForWithdraw('');
+      setLoading(false);
+    }, 1500);
+  };
+
+  const withdrawUSDC = async () => {
+    if (!withdrawRecipient || !withdrawAmount) {
+      showNotification('Please enter recipient and amount', 'error');
+      return;
+    }
+    setLoading(true);
+    setTimeout(() => {
+      showNotification(`${withdrawAmount} USDC withdrawn to ${withdrawRecipient.slice(0, 6)}...`, 'success');
       setWithdrawRecipient('');
       setWithdrawAmount('');
-      refetchAssets();
-      refetchAdminStatus();
-    }, 2000);
-  }
+      setLoading(false);
+    }, 1500);
+  };
 
-  if (!isConnected) {
-    return (
-      <div style={{
-        backgroundColor: '#121317',
-        minHeight: '100vh',
-        padding: '40px 20px',
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-      }}>
-        <div style={{
-          backgroundColor: '#111216',
-          border: '1px solid #2C2C2C',
-          borderRadius: '12px',
-          padding: '40px',
-          textAlign: 'center',
-          maxWidth: '400px',
-        }}>
-          <div style={{ fontSize: '48px', marginBottom: '16px' }}>🔒</div>
-          <div style={{ color: '#E1E2E2', fontSize: '18px', marginBottom: '8px' }}>
-            Connect Your Wallet
-          </div>
-          <div style={{ color: '#6D6041', fontSize: '14px' }}>
-            Please connect your wallet to access the admin dashboard
+  const mintUSDC = async () => {
+    if (!usdcMintAmount) {
+      showNotification('Please enter an amount to mint', 'error');
+      return;
+    }
+    setLoading(true);
+    setTimeout(() => {
+      showNotification(`${usdcMintAmount} USDC minted successfully!`, 'success');
+      setUsdcMintAmount('');
+      setLoading(false);
+    }, 1500);
+  };
+
+  const addAdmin = async () => {
+    if (!adminToAdd) {
+      showNotification('Please enter an admin address', 'error');
+      return;
+    }
+    setLoading(true);
+    setTimeout(() => {
+      showNotification(`Admin added: ${adminToAdd.slice(0, 10)}...`, 'success');
+      setAdminToAdd('');
+      setLoading(false);
+    }, 1500);
+  };
+
+  const removeAdmin = async () => {
+    if (!adminToRemove) {
+      showNotification('Please enter an admin address', 'error');
+      return;
+    }
+    setLoading(true);
+    setTimeout(() => {
+      showNotification(`Admin removed: ${adminToRemove.slice(0, 10)}...`, 'success');
+      setAdminToRemove('');
+      setLoading(false);
+    }, 1500);
+  };
+
+  const transferOwnership = async () => {
+    if (!newOwner) {
+      showNotification('Please enter a new owner address', 'error');
+      return;
+    }
+    setLoading(true);
+    setTimeout(() => {
+      showNotification(`Ownership transferred to ${newOwner.slice(0, 10)}...`, 'success');
+      setNewOwner('');
+      setLoading(false);
+    }, 1500);
+  };
+
+  const renounceOwnership = async () => {
+    if (!window.confirm('Are you sure you want to renounce ownership? This action cannot be undone!')) {
+      return;
+    }
+    setLoading(true);
+    setTimeout(() => {
+      showNotification('Ownership renounced', 'success');
+      setLoading(false);
+    }, 1500);
+  };
+
+  const checkAdmin = () => {
+    if (!adminToCheck) return;
+    const isAdmin = Math.random() > 0.5;
+    setAdminCheckResult(isAdmin);
+  };
+
+  useEffect(() => {
+    if (adminToCheck && adminToCheck.startsWith('0x') && adminToCheck.length === 42) {
+      checkAdmin();
+    } else {
+      setAdminCheckResult(null);
+    }
+  }, [adminToCheck]);
+
+  const tabs = [
+    { id: 'assets', label: 'Asset Management', icon: Home, adminOnly: true },
+    { id: 'verify', label: 'Quick Verify', icon: CheckCircle, adminOnly: true },
+    { id: 'withdraw', label: 'Withdraw Settings', icon: Settings, adminOnly: true },
+    { id: 'usdc', label: 'USDC Management', icon: DollarSign, adminOnly: true },
+    { id: 'admins', label: 'Manage Admins', icon: Users, adminOnly: false },
+    { id: 'ownership', label: 'Ownership', icon: Key, adminOnly: false },
+  ];
+
+  return (
+    <div className="min-h-screen bg-[#121317]">
+      {/* Notification */}
+      {notification && (
+        <div className={`fixed top-4 right-4 z-50 p-4 rounded-xl shadow-[0_4px_15px_rgba(0,0,0,0.3)] flex items-center gap-3 ${
+          notification.type === 'success' ? 'bg-[#CAAB5B]/20 border border-[#CAAB5B]' : 'bg-red-500/20 border border-red-500'
+        } max-w-md`}>
+          <AlertCircle className={`w-5 h-5 ${notification.type === 'success' ? 'text-[#CAAB5B]' : 'text-red-500'}`} />
+          <span className="text-[#E1E2E2]">{notification.message}</span>
+        </div>
+      )}
+
+      {/* Header */}
+      <div className="bg-[#111216] border-b border-[#2C2C2C] shadow-[0_4px_15px_rgba(0,0,0,0.3)]">
+        <div className="max-w-7xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Shield className="w-8 h-8 text-[#CAAB5B]" />
+              <div>
+                <h1 className="text-2xl font-bold text-[#E1E2E2]">ReaLiFi Admin Dashboard</h1>
+                <p className="text-sm text-[#6D6041]">Manage your real estate marketplace</p>
+              </div>
+            </div>
+            
+            {isConnected ? (
+              <div className="flex items-center gap-4">
+                <div className="text-right">
+                  <div className="text-sm font-medium text-[#E1E2E2]">
+                    {address?.slice(0, 6)}...{address?.slice(-4)}
+                  </div>
+                  <div className="flex gap-2 text-xs">
+                    {isOwner && <span className="text-[#CAAB5B] font-semibold">Owner</span>}
+                    {isAdmin && <span className="text-[#CAAB5B]/70 font-semibold">Admin</span>}
+                  </div>
+                </div>
+                <div className="w-3 h-3 bg-[#CAAB5B] rounded-full animate-pulse"></div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 text-[#6D6041]">
+                <Wallet className="w-5 h-5" />
+                <span className="text-sm">Not Connected</span>
+              </div>
+            )}
           </div>
         </div>
       </div>
-    );
-  }
 
-  if (isLoading) {
-  return <div>Checking permissions...</div>;
-}
-
-// Network error - allow manual retry
-if (isError) {
-  return (
-    <div>
-      <p>Network error. Unable to verify admin status.</p>
-      <button onClick={() => refetch()}>Retry Now</button>
-    </div>
-  );
-}
-
-  if (!isAdmin && !isOwner) {
-  // Still checking with retries remaining
-  if (retryCount < 3 && isChecking) {
-    return (
-      <div style={{
-        backgroundColor: '#121317',
-        minHeight: '100vh',
-        padding: '40px 20px',
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-      }}>
-        <div style={{
-          backgroundColor: '#111216',
-          border: '1px solid #ff9800',
-          borderRadius: '12px',
-          padding: '40px',
-          textAlign: 'center',
-          maxWidth: '400px',
-        }}>
-          <div style={{ fontSize: '48px', marginBottom: '16px' }}>⏳</div>
-          <div style={{ color: '#E1E2E2', fontSize: '18px', marginBottom: '8px' }}>
-            Checking Admin Status...
-          </div>
-          <div style={{ color: '#6D6041', fontSize: '14px', marginBottom: '24px' }}>
-            Attempt {retryCount + 1} of 3
-          </div>
-          <div style={{
-            backgroundColor: '#121317',
-            border: '1px solid #2C2C2C',
-            borderRadius: '8px',
-            padding: '16px',
-            marginBottom: '16px'
-          }}>
-            <div style={{ color: '#ff9800', fontSize: '32px', fontWeight: 'bold', marginBottom: '8px' }}>
-              {countdown}s
-            </div>
-            <div style={{ color: '#6D6041', fontSize: '12px' }}>
-              Next retry in {countdown} seconds
-            </div>
-          </div>
-          <div style={{
-            color: '#6D6041',
-            fontSize: '12px',
-            padding: '12px',
-            backgroundColor: '#121317',
-            borderRadius: '8px'
-          }}>
-            Please wait while we verify your admin privileges...
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Max retries reached - access denied
-  return (
-    <div style={{
-      backgroundColor: '#121317',
-      minHeight: '100vh',
-      padding: '40px 20px',
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-    }}>
-      <div style={{
-        backgroundColor: '#111216',
-        border: '1px solid #f44336',
-        borderRadius: '12px',
-        padding: '40px',
-        textAlign: 'center',
-        maxWidth: '400px',
-      }}>
-        <div style={{ fontSize: '48px', marginBottom: '16px' }}>🚫</div>
-        <div style={{ color: '#E1E2E2', fontSize: '18px', marginBottom: '8px' }}>
-          Access Denied
-        </div>
-        <div style={{ color: '#6D6041', fontSize: '14px', marginBottom: '16px' }}>
-          You do not have admin privileges to access this dashboard
-        </div>
-        <div style={{
-          color: '#6D6041',
-          fontSize: '12px',
-          padding: '12px',
-          backgroundColor: '#121317',
-          borderRadius: '8px'
-        }}>
-          Checked 3 times - no admin access detected
-        </div>
-      </div>
-    </div>
-  );
-}
-
-  return (
-    <div style={{
-      backgroundColor: '#121317',
-      minHeight: '100vh',
-      padding: '40px 20px'
-    }}>
-      <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
-        {/* Header */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '40px',
-          flexWrap: 'wrap',
-          gap: '16px'
-        }}>
-          <div>
-            <h1 style={{
-              color: '#f44336',
-              fontSize: '32px',
-              fontWeight: 'bold',
-              margin: 0,
-              marginBottom: '8px'
-            }}>
-              Admin Dashboard
-            </h1>
-            <p style={{
-              color: '#6D6041',
-              fontSize: '14px',
-              margin: 0
-            }}>
-              Manage platform operations and asset verification
-            </p>
-          </div>
-          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-            {isOwner && (
-              <div style={{
-                backgroundColor: '#111216',
-                border: '1px solid #ff9800',
-                borderRadius: '8px',
-                padding: '8px 16px',
-                color: '#ff9800',
-                fontSize: '14px',
-                fontWeight: 'bold',
-              }}>
-                👑 Owner
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        {/* Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <div className="bg-[#111216] rounded-xl p-6 shadow-[0_4px_15px_rgba(0,0,0,0.3)] border border-[#2C2C2C]">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-[#6D6041] mb-1">Role</p>
+                <p className="text-2xl font-bold text-[#E1E2E2]">
+                  {isOwner ? 'Owner' : 'Admin'}
+                </p>
               </div>
-            )}
-            <div style={{
-              backgroundColor: '#111216',
-              border: '1px solid #f44336',
-              borderRadius: '8px',
-              padding: '8px 16px',
-              color: '#f44336',
-              fontSize: '14px',
-              fontWeight: 'bold',
-            }}>
-              🛡️ Admin
+              <Shield className="w-12 h-12 text-[#CAAB5B] opacity-20" />
+            </div>
+          </div>
+          
+          <div className="bg-[#111216] rounded-xl p-6 shadow-[0_4px_15px_rgba(0,0,0,0.3)] border border-[#2C2C2C]">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-[#6D6041] mb-1">Total Assets</p>
+                <p className="text-2xl font-bold text-[#E1E2E2]">
+                  {assets.length}
+                </p>
+              </div>
+              <Home className="w-12 h-12 text-[#CAAB5B] opacity-20" />
+            </div>
+          </div>
+          
+          <div className="bg-[#111216] rounded-xl p-6 shadow-[0_4px_15px_rgba(0,0,0,0.3)] border border-[#2C2C2C]">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-[#6D6041] mb-1">Verified</p>
+                <p className="text-2xl font-bold text-[#E1E2E2]">
+                  {assets.filter(a => a.verified).length}
+                </p>
+              </div>
+              <CheckCircle className="w-12 h-12 text-[#CAAB5B] opacity-20" />
+            </div>
+          </div>
+          
+          <div className="bg-[#111216] rounded-xl p-6 shadow-[0_4px_15px_rgba(0,0,0,0.3)] border border-[#2C2C2C]">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-[#6D6041] mb-1">Pending</p>
+                <p className="text-2xl font-bold text-[#E1E2E2]">
+                  {assets.filter(a => !a.verified && !a.sold).length}
+                </p>
+              </div>
+              <AlertCircle className="w-12 h-12 text-[#CAAB5B] opacity-20" />
             </div>
           </div>
         </div>
-
-        {/* Stats Overview */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-          gap: '16px',
-          marginBottom: '40px'
-        }}>
-          <div style={{
-            backgroundColor: '#111216',
-            border: '1px solid #2C2C2C',
-            borderRadius: '12px',
-            padding: '20px',
-          }}>
-            <div style={{ color: '#6D6041', fontSize: '12px', marginBottom: '8px' }}>
-              TOTAL ASSETS
-            </div>
-            <div style={{ color: '#E1E2E2', fontSize: '28px', fontWeight: 'bold' }}>
-              {allAssets?.length || 0}
-            </div>
-          </div>
-          <div style={{
-            backgroundColor: '#111216',
-            border: '1px solid #2C2C2C',
-            borderRadius: '12px',
-            padding: '20px',
-          }}>
-            <div style={{ color: '#6D6041', fontSize: '12px', marginBottom: '8px' }}>
-              PENDING VERIFICATION
-            </div>
-            <div style={{ color: '#ff9800', fontSize: '28px', fontWeight: 'bold' }}>
-              {unverifiedAssets.length}
-            </div>
-          </div>
-          <div style={{
-            backgroundColor: '#111216',
-            border: '1px solid #2C2C2C',
-            borderRadius: '12px',
-            padding: '20px',
-          }}>
-            <div style={{ color: '#6D6041', fontSize: '12px', marginBottom: '8px' }}>
-              VERIFIED
-            </div>
-            <div style={{ color: '#4CAF50', fontSize: '28px', fontWeight: 'bold' }}>
-              {verifiedAssets.length}
-            </div>
-          </div>
-          <div style={{
-            backgroundColor: '#111216',
-            border: '1px solid #2C2C2C',
-            borderRadius: '12px',
-            padding: '20px',
-          }}>
-            <div style={{ color: '#6D6041', fontSize: '12px', marginBottom: '8px' }}>
-              CONTRACT BALANCE
-            </div>
-            <div style={{ color: '#CAAB5B', fontSize: '28px', fontWeight: 'bold' }}>
-              {contractBalance ? formatUnits(contractBalance, 6) : '0'} USDC
-            </div>
-          </div>
-        </div>
-
-        {/* Transaction Status */}
-        {hash && (
-          <div style={{
-            marginBottom: '24px',
-            padding: '16px',
-            backgroundColor: '#111216',
-            border: '1px solid #2C2C2C',
-            borderRadius: '12px',
-          }}>
-            {isConfirming && (
-              <div style={{ color: '#ff9800', marginBottom: '8px', fontWeight: 'bold' }}>
-                ⏳ Transaction confirming...
-              </div>
-            )}
-            {isSuccess && (
-              <div style={{ color: '#4CAF50', marginBottom: '8px', fontWeight: 'bold' }}>
-                ✓ Action completed successfully!
-              </div>
-            )}
-            <div style={{ color: '#6D6041', fontSize: '12px', marginBottom: '4px' }}>
-              Transaction Hash:
-            </div>
-            <div style={{
-              color: '#E1E2E2',
-              fontSize: '12px',
-              fontFamily: 'monospace',
-              wordBreak: 'break-all',
-            }}>
-              {hash}
-            </div>
-          </div>
-        )}
-
-        {error && (
-          <div style={{
-            marginBottom: '24px',
-            padding: '16px',
-            backgroundColor: '#f44336',
-            borderRadius: '12px',
-            color: '#fff',
-          }}>
-            Error: {error.message}
-          </div>
-        )}
 
         {/* Tabs */}
-        <div style={{
-          display: 'flex',
-          gap: '8px',
-          marginBottom: '32px',
-          borderBottom: '1px solid #2C2C2C',
-          paddingBottom: '0'
-        }}>
-          <button
-            onClick={() => setSelectedTab('verification')}
-            style={{
-              padding: '12px 24px',
-              backgroundColor: selectedTab === 'verification' ? '#111216' : 'transparent',
-              color: selectedTab === 'verification' ? '#f44336' : '#6D6041',
-              border: 'none',
-              borderBottom: selectedTab === 'verification' ? '2px solid #f44336' : '2px solid transparent',
-              fontSize: '14px',
-              fontWeight: 'bold',
-              cursor: 'pointer',
-              transition: 'all 0.2s'
-            }}
-          >
-            Asset Verification
-          </button>
-          {isOwner && (
-            <button
-              onClick={() => setSelectedTab('admins')}
-              style={{
-                padding: '12px 24px',
-                backgroundColor: selectedTab === 'admins' ? '#111216' : 'transparent',
-                color: selectedTab === 'admins' ? '#f44336' : '#6D6041',
-                border: 'none',
-                borderBottom: selectedTab === 'admins' ? '2px solid #f44336' : '2px solid transparent',
-                fontSize: '14px',
-                fontWeight: 'bold',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-            >
-              Admin Management
-            </button>
-          )}
-          <button
-            onClick={() => setSelectedTab('finance')}
-            style={{
-              padding: '12px 24px',
-              backgroundColor: selectedTab === 'finance' ? '#111216' : 'transparent',
-              color: selectedTab === 'finance' ? '#f44336' : '#6D6041',
-              border: 'none',
-              borderBottom: selectedTab === 'finance' ? '2px solid #f44336' : '2px solid transparent',
-              fontSize: '14px',
-              fontWeight: 'bold',
-              cursor: 'pointer',
-              transition: 'all 0.2s'
-            }}
-          >
-            Financial Operations
-          </button>
-        </div>
+        <div className="bg-[#111216] rounded-xl shadow-[0_4px_15px_rgba(0,0,0,0.3)] border border-[#2C2C2C] overflow-hidden">
+          <div className="border-b border-[#2C2C2C]">
+            <div className="flex overflow-x-auto">
+              {tabs.map((tab) => {
+                const canAccess = tab.adminOnly ? (isOwner || isAdmin) : isOwner;
+                const TabIcon = tab.icon;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => canAccess && setActiveTab(tab.id)}
+                    disabled={!canAccess}
+                    className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors whitespace-nowrap ${
+                      activeTab === tab.id
+                        ? 'text-[#CAAB5B] border-b-2 border-[#CAAB5B]'
+                        : canAccess
+                        ? 'text-[#6D6041] hover:text-[#E1E2E2]'
+                        : 'text-[#6D6041]/40 cursor-not-allowed'
+                    }`}
+                  >
+                    <TabIcon className="w-5 h-5" />
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
-        {/* Asset Verification Tab */}
-        {selectedTab === 'verification' && (
-          <>
-            {unverifiedAssets.length > 0 ? (
-              <>
-                <h2 style={{
-                  color: '#ff9800',
-                  fontSize: '24px',
-                  fontWeight: 'bold',
-                  marginBottom: '24px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
-                }}>
-                  <span>⏳</span> Pending Verification ({unverifiedAssets.length})
-                </h2>
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
-                  gap: '24px',
-                  marginBottom: '48px'
-                }}>
-                  {unverifiedAssets.map((asset) => (
-                    <AssetVerificationCard
-                      key={asset.tokenId.toString()}
-                      asset={asset}
-                      onVerify={() => {
-                        setSelectedAsset(asset);
-                        setActionType('verify');
-                        setShowModal(true);
-                      }}
-                      isPending={isPending}
-                      isConfirming={isConfirming}
-                    />
+          <div className="p-8">
+            {/* Asset Management Tab */}
+            {activeTab === 'assets' && (
+              <div>
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h2 className="text-xl font-semibold text-[#E1E2E2] mb-2">Asset Management</h2>
+                    <p className="text-[#6D6041]">Review and manage all real estate assets</p>
+                  </div>
+                  <button
+                    onClick={() => showNotification('Assets refreshed', 'success')}
+                    className="flex items-center gap-2 px-4 py-2 bg-[#CAAB5B]/10 text-[#CAAB5B] rounded-lg hover:bg-[#CAAB5B]/20 transition-colors"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                    Refresh
+                  </button>
+                </div>
+
+                {/* Filter Buttons */}
+                <div className="flex gap-3 mb-6 overflow-x-auto pb-2">
+                  {['all', 'verified', 'unverified', 'sold'].map((filter) => (
+                    <button
+                      key={filter}
+                      onClick={() => setFilterStatus(filter)}
+                      className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap transition-colors ${
+                        filterStatus === filter
+                          ? 'bg-[#CAAB5B] text-[#121317]'
+                          : 'bg-[#111216] border border-[#2C2C2C] text-[#6D6041] hover:text-[#E1E2E2]'
+                      }`}
+                    >
+                      {filter.charAt(0).toUpperCase() + filter.slice(1)}
+                      {filter === 'all' && ` (${assets.length})`}
+                      {filter === 'verified' && ` (${assets.filter(a => a.verified && !a.sold).length})`}
+                      {filter === 'unverified' && ` (${assets.filter(a => !a.verified && !a.sold).length})`}
+                      {filter === 'sold' && ` (${assets.filter(a => a.sold).length})`}
+                    </button>
                   ))}
                 </div>
-              </>
-            ) : (
-              <div style={{
-                textAlign: 'center',
-                padding: '60px 20px',
-                backgroundColor: '#111216',
-                border: '1px solid #2C2C2C',
-                borderRadius: '12px',
-                color: '#6D6041'
-              }}>
-                <div style={{ fontSize: '48px', marginBottom: '16px' }}>✓</div>
-                <div style={{ fontSize: '18px', marginBottom: '8px' }}>All Caught Up!</div>
-                <div style={{ fontSize: '14px' }}>
-                  No assets pending verification at the moment
+
+                {/* Asset Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {filteredAssets.map((asset) => (
+                    <div
+                      key={asset.tokenId}
+                      onClick={() => handleAssetClick(asset.tokenId)}
+                      className="bg-[#111216] border border-[#2C2C2C] rounded-xl overflow-hidden hover:border-[#CAAB5B] transition-all cursor-pointer group shadow-[0_4px_15px_rgba(0,0,0,0.3)] hover:shadow-lg"
+                    >
+                      {/* Asset Image/Placeholder */}
+                      <div className="h-48 bg-gradient-to-br from-[#CAAB5B]/10 to-[#CAAB5B]/5 flex items-center justify-center relative">
+                        <Home className="w-16 h-16 text-[#CAAB5B]/30" />
+                        <div className="absolute top-3 right-3">
+                          {asset.verified ? (
+                            <span className="px-3 py-1 bg-[#CAAB5B] text-[#121317] text-xs font-semibold rounded-full flex items-center gap-1">
+                              <CheckCircle className="w-3 h-3" />
+                              Verified
+                            </span>
+                          ) : (
+                            <span className="px-3 py-1 bg-red-500/20 border border-red-500 text-red-500 text-xs font-semibold rounded-full flex items-center gap-1">
+                              <AlertCircle className="w-3 h-3" />
+                              Pending
+                            </span>
+                          )}
+                        </div>
+                        {asset.sold && (
+                          <div className="absolute top-3 left-3">
+                            <span className="px-3 py-1 bg-[#6D6041]/20 border border-[#6D6041] text-[#6D6041] text-xs font-semibold rounded-full">
+                              SOLD
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Asset Details */}
+                      <div className="p-4">
+                        <div className="flex items-start justify-between mb-3">
+                          <div>
+                            <h3 className="text-lg font-bold text-[#E1E2E2] mb-1">
+                              Property #{asset.tokenId}
+                            </h3>
+                            <p className="text-2xl font-bold text-[#CAAB5B]">
+                              ${formatPrice(asset.price)} USDC
+                            </p>
+                          </div>
+                          <ExternalLink className="w-5 h-5 text-[#CAAB5B] opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </div>
+
+                        {/* Seller Info */}
+                        <div className="mb-3 pb-3 border-b border-[#2C2C2C]">
+                          <p className="text-xs text-[#6D6041] mb-1">Seller</p>
+                          <p className="text-sm font-mono text-[#E1E2E2]">
+                            {asset.seller.slice(0, 6)}...{asset.seller.slice(-4)}
+                          </p>
+                        </div>
+
+                        {/* Status Grid */}
+                        <div className="grid grid-cols-2 gap-2 mb-3">
+                          <div className="bg-[#121317]/50 rounded-lg p-2">
+                            <p className="text-xs text-[#6D6041] mb-0.5">Payment</p>
+                            <p className={`text-xs font-semibold ${asset.isPaidFor ? 'text-[#CAAB5B]' : 'text-[#6D6041]'}`}>
+                              {asset.isPaidFor ? 'Paid' : 'Unpaid'}
+                            </p>
+                          </div>
+                          <div className="bg-[#121317]/50 rounded-lg p-2">
+                            <p className="text-xs text-[#6D6041] mb-0.5">Status</p>
+                            <p className={`text-xs font-semibold ${asset.isCanceled ? 'text-red-500' : 'text-[#CAAB5B]'}`}>
+                              {asset.isCanceled ? 'Canceled' : 'Active'}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Fractionalization Info */}
+                        {asset.isFractionalized && (
+                          <div className="bg-[#CAAB5B]/10 border border-[#CAAB5B]/30 rounded-lg p-3 mb-3">
+                            <p className="text-xs font-semibold text-[#CAAB5B] mb-2">Fractionalized Asset</p>
+                            <div className="space-y-1">
+                              <div className="flex justify-between text-xs">
+                                <span className="text-[#6D6041]">Total Tokens:</span>
+                                <span className="text-[#E1E2E2] font-medium">
+                                  {asset.totalFractionalTokens}
+                                </span>
+                              </div>
+                              <div className="flex justify-between text-xs">
+                                <span className="text-[#6D6041]">Remaining:</span>
+                                <span className="text-[#E1E2E2] font-medium">
+                                  {asset.remainingFractionalTokens}
+                                </span>
+                              </div>
+                              <div className="flex justify-between text-xs">
+                                <span className="text-[#6D6041]">Price/Token:</span>
+                                <span className="text-[#CAAB5B] font-medium">
+                                  ${formatPrice(asset.pricePerFractionalToken)}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Current Buyer */}
+                        {asset.currentBuyer && asset.currentBuyer !== '0x0000000000000000000000000000000000000000' && (
+                          <div className="mb-3">
+                            <p className="text-xs text-[#6D6041] mb-1">Current Buyer</p>
+                            <p className="text-sm font-mono text-[#E1E2E2]">
+                              {asset.currentBuyer.slice(0, 6)}...{asset.currentBuyer.slice(-4)}
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Quick Action Button */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleAssetClick(asset.tokenId);
+                          }}
+                          className="w-full mt-3 py-2 bg-[#CAAB5B]/10 text-[#CAAB5B] rounded-lg hover:bg-[#CAAB5B] hover:text-[#121317] transition-colors font-medium text-sm"
+                        >
+                          View Details & Verify
+                        </button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
 
-            {verifiedAssets.length > 0 && (
-              <>
-                <h2 style={{
-                  color: '#4CAF50',
-                  fontSize: '24px',
-                  fontWeight: 'bold',
-                  marginBottom: '24px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
-                }}>
-                  <span>✓</span> Verified Assets ({verifiedAssets.length})
-                </h2>
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
-                  gap: '24px'
-                }}>
-                  {verifiedAssets.slice(0, 6).map((asset) => (
-                    <AssetVerificationCard
-                      key={asset.tokenId.toString()}
-                      asset={asset}
-                      onVerify={() => {}}
-                      isPending={false}
-                      isConfirming={false}
-                      isVerified
+            {/* Quick Verify Tab */}
+            {activeTab === 'verify' && (
+              <div className="max-w-2xl">
+                <h2 className="text-xl font-semibold text-[#E1E2E2] mb-2">Quick Verify Assets</h2>
+                <p className="text-[#6D6041] mb-6">Approve real estate listings to make them available for purchase</p>
+                
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-[#E1E2E2] mb-2">Token ID</label>
+                    <input
+                      type="number"
+                      value={tokenIdToVerify}
+                      onChange={(e) => setTokenIdToVerify(e.target.value)}
+                      placeholder="Enter token ID to verify"
+                      className="w-full px-4 py-3 bg-[#111216] border border-[#2C2C2C] text-[#E1E2E2] rounded-lg focus:ring-2 focus:ring-[#CAAB5B] focus:border-transparent placeholder-[#6D6041]"
                     />
-                  ))}
+                  </div>
+                  
+                  <button
+                    onClick={verifyAsset}
+                    disabled={loading || !tokenIdToVerify}
+                    className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-[#CAAB5B] text-[#121317] rounded-lg hover:bg-[#CAAB5B]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                  >
+                    {loading ? <RefreshCw className="w-5 h-5 animate-spin" /> : <CheckCircle className="w-5 h-5" />}
+                    {loading ? 'Verifying...' : 'Verify Asset'}
+                  </button>
                 </div>
-              </>
+              </div>
             )}
-          </>
-        )}
 
-        {/* Admin Management Tab */}
-        {selectedTab === 'admins' && isOwner && (
-          <div style={{ maxWidth: '800px' }}>
-            <h2 style={{
-              color: '#f44336',
-              fontSize: '24px',
-              fontWeight: 'bold',
-              marginBottom: '24px',
-            }}>
-              Admin Management
-            </h2>
+            {/* Withdraw Settings Tab */}
+            {activeTab === 'withdraw' && (
+              <div className="max-w-2xl">
+                <h2 className="text-xl font-semibold text-[#E1E2E2] mb-2">Buyer Withdrawal Settings</h2>
+                <p className="text-[#6D6041] mb-6">Control whether buyers can withdraw funds for specific tokens</p>
+                
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-[#E1E2E2] mb-2">Token ID</label>
+                    <input
+                      type="number"
+                      value={tokenIdForWithdraw}
+                      onChange={(e) => setTokenIdForWithdraw(e.target.value)}
+                      placeholder="Enter token ID"
+                      className="w-full px-4 py-3 bg-[#111216] border border-[#2C2C2C] text-[#E1E2E2] rounded-lg focus:ring-2 focus:ring-[#CAAB5B] focus:border-transparent placeholder-[#6D6041]"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-[#E1E2E2] mb-2">Permission</label>
+                    <div className="flex gap-4">
+                      <button
+                        onClick={() => setCanWithdraw(true)}
+                        className={`flex-1 px-4 py-3 rounded-lg border-2 transition-colors font-medium ${
+                          canWithdraw
+                            ? 'border-[#CAAB5B] bg-[#CAAB5B]/10 text-[#CAAB5B]'
+                            : 'border-[#2C2C2C] bg-[#111216] text-[#6D6041] hover:border-[#CAAB5B]/50'
+                        }`}
+                      >
+                        Allow Withdrawal
+                      </button>
+                      <button
+                        onClick={() => setCanWithdraw(false)}
+                        className={`flex-1 px-4 py-3 rounded-lg border-2 transition-colors font-medium ${
+                          !canWithdraw
+                            ? 'border-red-500 bg-red-500/10 text-red-500'
+                            : 'border-[#2C2C2C] bg-[#111216] text-[#6D6041] hover:border-red-500/50'
+                        }`}
+                      >
+                        Block Withdrawal
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <button
+                    onClick={setBuyerWithdrawPermission}
+                    disabled={loading || !tokenIdForWithdraw}
+                    className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-[#CAAB5B] text-[#121317] rounded-lg hover:bg-[#CAAB5B]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                  >
+                    {loading ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Settings className="w-5 h-5" />}
+                    {loading ? 'Updating...' : 'Update Permission'}
+                  </button>
+                </div>
+              </div>
+            )}
 
-            {/* Add Admin */}
-            <div style={{
-              backgroundColor: '#111216',
-              border: '1px solid #2C2C2C',
-              borderRadius: '12px',
-              padding: '24px',
-              marginBottom: '24px'
-            }}>
-              <h3 style={{
-                color: '#E1E2E2',
-                fontSize: '18px',
-                fontWeight: 'bold',
-                marginBottom: '16px'
-              }}>
-                Add New Admin
-              </h3>
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{
-                  color: '#6D6041',
-                  fontSize: '14px',
-                  display: 'block',
-                  marginBottom: '8px'
-                }}>
-                  Admin Wallet Address
-                </label>
-                <input
-                  type="text"
-                  value={newAdminAddress}
-                  onChange={(e) => setNewAdminAddress(e.target.value)}
-                  placeholder="0x..."
-                  style={{
-                    width: '100%',
-                    padding: '12px',
-                    backgroundColor: '#121317',
-                    border: '1px solid #2C2C2C',
-                    borderRadius: '8px',
-                    color: '#E1E2E2',
-                    fontSize: '14px',
-                    fontFamily: 'monospace'
-                  }}
-                />
-              </div>
-              <button
-                onClick={handleAddAdmin}
-                disabled={!newAdminAddress || isPending || isConfirming}
-                style={{
-                  padding: '12px 24px',
-                  backgroundColor: !newAdminAddress || isPending || isConfirming ? '#2C2C2C' : '#4CAF50',
-                  color: !newAdminAddress || isPending || isConfirming ? '#6D6041' : '#fff',
-                  border: 'none',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  fontWeight: 'bold',
-                  cursor: !newAdminAddress || isPending || isConfirming ? 'not-allowed' : 'pointer',
-                }}
-              >
-                {isPending ? 'Confirm in wallet...' : isConfirming ? 'Adding...' : 'Add Admin'}
-              </button>
-            </div>
+            {/* USDC Management Tab */}
+            {activeTab === 'usdc' && (
+              <div className="max-w-2xl space-y-8">
+                {/* Mint USDC Section */}
+                <div>
+                  <h2 className="text-xl font-semibold text-[#E1E2E2] mb-2">Mint USDC to Contract</h2>
+                  <p className="text-[#6D6041] mb-6">Mint USDC tokens directly to the smart contract</p>
+                  
+                  <div className="bg-[#CAAB5B]/10 border border-[#CAAB5B]/30 rounded-xl p-4 mb-6">
+                    <div className="flex gap-3">
+                      <AlertCircle className="w-5 h-5 text-[#CAAB5B] flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-medium text-[#E1E2E2]">Contract Address</p>
+                        <p className="text-xs font-mono text-[#6D6041] mt-1 break-all">
+                          {contractAddress}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-[#E1E2E2] mb-2">Amount (USDC)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={usdcMintAmount}
+                        onChange={(e) => setUsdcMintAmount(e.target.value)}
+                        placeholder="0.00"
+                        className="w-full px-4 py-3 bg-[#111216] border border-[#2C2C2C] text-[#E1E2E2] rounded-lg focus:ring-2 focus:ring-[#CAAB5B] focus:border-transparent placeholder-[#6D6041]"
+                      />
+                    </div>
+                    
+                    <button
+                      onClick={mintUSDC}
+                      disabled={loading || !usdcMintAmount}
+                      className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-[#CAAB5B] text-[#121317] rounded-lg hover:bg-[#CAAB5B]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                    >
+                      {loading ? <RefreshCw className="w-5 h-5 animate-spin" /> : <DollarSign className="w-5 h-5" />}
+                      {loading ? 'Minting...' : 'Mint USDC'}
+                    </button>
+                  </div>
+                </div>
 
-            {/* Remove Admin */}
-            <div style={{
-              backgroundColor: '#111216',
-              border: '1px solid #2C2C2C',
-              borderRadius: '12px',
-              padding: '24px'
-            }}>
-              <h3 style={{
-                color: '#E1E2E2',
-                fontSize: '18px',
-                fontWeight: 'bold',
-                marginBottom: '16px'
-              }}>
-                Remove Admin
-              </h3>
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{
-                  color: '#6D6041',
-                  fontSize: '14px',
-                  display: 'block',
-                  marginBottom: '8px'
-                }}>
-                  Admin Wallet Address
-                </label>
-                <input
-                  type="text"
-                  value={removeAdminAddress}
-                  onChange={(e) => setRemoveAdminAddress(e.target.value)}
-                  placeholder="0x..."
-                  style={{
-                    width: '100%',
-                    padding: '12px',
-                    backgroundColor: '#121317',
-                    border: '1px solid #2C2C2C',
-                    borderRadius: '8px',
-                    color: '#E1E2E2',
-                    fontSize: '14px',
-                    fontFamily: 'monospace'
-                  }}
-                />
-              </div>
-              <button
-                onClick={handleRemoveAdmin}
-                disabled={!removeAdminAddress || isPending || isConfirming}
-                style={{
-                  padding: '12px 24px',
-                  backgroundColor: !removeAdminAddress || isPending || isConfirming ? '#2C2C2C' : '#f44336',
-                  color: !removeAdminAddress || isPending || isConfirming ? '#6D6041' : '#fff',
-                  border: 'none',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  fontWeight: 'bold',
-                  cursor: !removeAdminAddress || isPending || isConfirming ? 'not-allowed' : 'pointer',
-                }}
-              >
-                {isPending ? 'Confirm in wallet...' : isConfirming ? 'Removing...' : 'Remove Admin'}
-              </button>
-            </div>
-          </div>
-        )}
+                <div className="border-t border-[#2C2C2C]"></div>
 
-        {/* Financial Operations Tab */}
-        {selectedTab === 'finance' && (
-          <div style={{ maxWidth: '800px' }}>
-            <h2 style={{
-              color: '#f44336',
-              fontSize: '24px',
-              fontWeight: 'bold',
-              marginBottom: '24px',
-            }}>
-              Financial Operations
-            </h2>
+                {/* Withdraw USDC Section */}
+                <div>
+                  <h2 className="text-xl font-semibold text-[#E1E2E2] mb-2">Withdraw USDC</h2>
+                  <p className="text-[#6D6041] mb-6">Transfer USDC from the contract to a recipient address</p>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-[#E1E2E2] mb-2">Recipient Address</label>
+                      <input
+                        type="text"
+                        value={withdrawRecipient}
+                        onChange={(e) => setWithdrawRecipient(e.target.value)}
+                        placeholder="0x..."
+                        className="w-full px-4 py-3 bg-[#111216] border border-[#2C2C2C] text-[#E1E2E2] rounded-lg focus:ring-2 focus:ring-[#CAAB5B] focus:border-transparent font-mono text-sm placeholder-[#6D6041]"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-[#E1E2E2] mb-2">Amount (USDC)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={withdrawAmount}
+                        onChange={(e) => setWithdrawAmount(e.target.value)}
+                        placeholder="0.00"
+                        className="w-full px-4 py-3 bg-[#111216] border border-[#2C2C2C] text-[#E1E2E2] rounded-lg focus:ring-2 focus:ring-[#CAAB5B] focus:border-transparent placeholder-[#6D6041]"
+                      />
+                    </div>
+                    
+                    <button
+                      onClick={withdrawUSDC}
+                      disabled={loading || !withdrawRecipient || !withdrawAmount}
+                      className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-[#CAAB5B] text-[#121317] rounded-lg hover:bg-[#CAAB5B]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                    >
+                      {loading ? <RefreshCw className="w-5 h-5 animate-spin" /> : <DollarSign className="w-5 h-5" />}
+                      {loading ? 'Processing...' : 'Withdraw USDC'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
-            {/* Contract Balance Display */}
-            <div style={{
-              backgroundColor: '#111216',
-              border: '1px solid #CAAB5B',
-              borderRadius: '12px',
-              padding: '24px',
-              marginBottom: '24px'
-            }}>
-              <div style={{
-                color: '#6D6041',
-                fontSize: '12px',
-                marginBottom: '8px',
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px'
-              }}>
-                Available Contract Balance
-              </div>
-              <div style={{
-                color: '#CAAB5B',
-                fontSize: '36px',
-                fontWeight: 'bold'
-              }}>
-                {contractBalance ? formatUnits(contractBalance, 6) : '0'} USDC
-              </div>
-              <div style={{
-                color: '#6D6041',
-                fontSize: '12px',
-                marginTop: '8px'
-              }}>
-                Platform fees and accumulated payments
-              </div>
-            </div>
+            {/* Manage Admins Tab */}
+            {activeTab === 'admins' && (
+              <div className="max-w-2xl space-y-8">
+                {/* Add Admin */}
+                <div>
+                  <h2 className="text-xl font-semibold text-[#E1E2E2] mb-2">Add Admin</h2>
+                  <p className="text-[#6D6041] mb-6">Grant admin privileges to a new address</p>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-[#E1E2E2] mb-2">Admin Address</label>
+                      <input
+                        type="text"
+                        value={adminToAdd}
+                        onChange={(e) => setAdminToAdd(e.target.value)}
+                        placeholder="0x..."
+                        className="w-full px-4 py-3 bg-[#111216] border border-[#2C2C2C] text-[#E1E2E2] rounded-lg focus:ring-2 focus:ring-[#CAAB5B] focus:border-transparent font-mono text-sm placeholder-[#6D6041]"
+                      />
+                    </div>
+                    
+                    <button
+                      onClick={addAdmin}
+                      disabled={loading || !adminToAdd}
+                      className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-[#CAAB5B] text-[#121317] rounded-lg hover:bg-[#CAAB5B]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                    >
+                      {loading ? <RefreshCw className="w-5 h-5 animate-spin" /> : <UserPlus className="w-5 h-5" />}
+                      {loading ? 'Adding...' : 'Add Admin'}
+                    </button>
+                  </div>
+                </div>
 
-            {/* Withdraw USDC */}
-            <div style={{
-              backgroundColor: '#111216',
-              border: '1px solid #2C2C2C',
-              borderRadius: '12px',
-              padding: '24px'
-            }}>
-              <h3 style={{
-                color: '#E1E2E2',
-                fontSize: '18px',
-                fontWeight: 'bold',
-                marginBottom: '16px'
-              }}>
-                Withdraw USDC
-              </h3>
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{
-                  color: '#6D6041',
-                  fontSize: '14px',
-                  display: 'block',
-                  marginBottom: '8px'
-                }}>
-                  Recipient Address
-                </label>
-                <input
-                  type="text"
-                  value={withdrawRecipient}
-                  onChange={(e) => setWithdrawRecipient(e.target.value)}
-                  placeholder="0x..."
-                  style={{
-                    width: '100%',
-                    padding: '12px',
-                    backgroundColor: '#121317',
-                    border: '1px solid #2C2C2C',
-                    borderRadius: '8px',
-                    color: '#E1E2E2',
-                    fontSize: '14px',
-                    fontFamily: 'monospace',
-                    marginBottom: '16px'
-                  }}
-                />
-                <label style={{
-                  color: '#6D6041',
-                  fontSize: '14px',
-                  display: 'block',
-                  marginBottom: '8px'
-                }}>
-                  Amount (USDC)
-                </label>
-                <input
-                  type="number"
-                  value={withdrawAmount}
-                  onChange={(e) => setWithdrawAmount(e.target.value)}
-                  placeholder="0.00"
-                  step="0.01"
-                  style={{
-                    width: '100%',
-                    padding: '12px',
-                    backgroundColor: '#121317',
-                    border: '1px solid #2C2C2C',
-                    borderRadius: '8px',
-                    color: '#E1E2E2',
-                    fontSize: '14px'
-                  }}
-                />
-              </div>
-              <button
-                onClick={handleWithdrawUSDC}
-                disabled={!withdrawRecipient || !withdrawAmount || isPending || isConfirming}
-                style={{
-                  padding: '12px 24px',
-                  backgroundColor: !withdrawRecipient || !withdrawAmount || isPending || isConfirming ? '#2C2C2C' : '#CAAB5B',
-                  color: !withdrawRecipient || !withdrawAmount || isPending || isConfirming ? '#6D6041' : '#121317',
-                  border: 'none',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  fontWeight: 'bold',
-                  cursor: !withdrawRecipient || !withdrawAmount || isPending || isConfirming ? 'not-allowed' : 'pointer',
-                }}
-              >
-                {isPending ? 'Confirm in wallet...' : isConfirming ? 'Withdrawing...' : 'Withdraw USDC'}
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
+                <div className="border-t border-[#2C2C2C]"></div>
 
-      {/* Verification Confirmation Modal */}
-      {showModal && selectedAsset && actionType === 'verify' && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.8)',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          zIndex: 1000,
-          padding: '20px'
-        }}>
-          <div style={{
-            backgroundColor: '#111216',
-            border: '1px solid #2C2C2C',
-            borderRadius: '16px',
-            padding: '32px',
-            maxWidth: '500px',
-            width: '100%'
-          }}>
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: '24px'
-            }}>
-              <h2 style={{
-                color: '#4CAF50',
-                fontSize: '24px',
-                fontWeight: 'bold',
-                margin: 0
-              }}>
-                Verify Asset
-              </h2>
-              <button
-                onClick={() => {
-                  setShowModal(false);
-                  setSelectedAsset(null);
-                  setActionType(null);
-                }}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#6D6041',
-                  fontSize: '24px',
-                  cursor: 'pointer',
-                  padding: '0',
-                  width: '32px',
-                  height: '32px'
-                }}
-              >
-                ×
-              </button>
-            </div>
+                {/* Remove Admin */}
+                <div>
+                  <h2 className="text-xl font-semibold text-[#E1E2E2] mb-2">Remove Admin</h2>
+                  <p className="text-[#6D6041] mb-6">Revoke admin privileges from an address</p>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-[#E1E2E2] mb-2">Admin Address</label>
+                      <input
+                        type="text"
+                        value={adminToRemove}
+                        onChange={(e) => setAdminToRemove(e.target.value)}
+                        placeholder="0x..."
+                        className="w-full px-4 py-3 bg-[#111216] border border-[#2C2C2C] text-[#E1E2E2] rounded-lg focus:ring-2 focus:ring-[#CAAB5B] focus:border-transparent font-mono text-sm placeholder-[#6D6041]"
+                      />
+                    </div>
+                    
+                    <button
+                      onClick={removeAdmin}
+                      disabled={loading || !adminToRemove}
+                      className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-red-500/20 border border-red-500 text-red-500 rounded-lg hover:bg-red-500 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                    >
+                      {loading ? <RefreshCw className="w-5 h-5 animate-spin" /> : <UserMinus className="w-5 h-5" />}
+                      {loading ? 'Removing...' : 'Remove Admin'}
+                    </button>
+                  </div>
+                </div>
 
-            <div style={{
-              backgroundColor: '#121317',
-              border: '1px solid #2C2C2C',
-              borderRadius: '12px',
-              padding: '20px',
-              marginBottom: '24px'
-            }}>
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                marginBottom: '12px'
-              }}>
-                <span style={{ color: '#6D6041', fontSize: '14px' }}>Token ID</span>
-                <span style={{ color: '#E1E2E2', fontSize: '14px', fontWeight: 'bold' }}>
-                  #{selectedAsset.tokenId.toString()}
-                </span>
-              </div>
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                marginBottom: '12px'
-              }}>
-                <span style={{ color: '#6D6041', fontSize: '14px' }}>Price</span>
-                <span style={{ color: '#CAAB5B', fontSize: '18px', fontWeight: 'bold' }}>
-                  {formatUnits(selectedAsset.price, 6)} USDC
-                </span>
-              </div>
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-              }}>
-                <span style={{ color: '#6D6041', fontSize: '14px' }}>Seller</span>
-                <span style={{
-                  color: '#E1E2E2',
-                  fontSize: '12px',
-                  fontFamily: 'monospace'
-                }}>
-                  {selectedAsset.seller.slice(0, 6)}...{selectedAsset.seller.slice(-4)}
-                </span>
-              </div>
-            </div>
+                <div className="border-t border-[#2C2C2C]"></div>
 
-            <div style={{
-              backgroundColor: '#4CAF5020',
-              border: '1px solid #4CAF50',
-              borderRadius: '12px',
-              padding: '16px',
-              marginBottom: '24px',
-              fontSize: '14px',
-              color: '#E1E2E2'
-            }}>
-              <div style={{ fontWeight: 'bold', marginBottom: '8px', color: '#4CAF50' }}>
-                ✓ Verify Asset
-              </div>
-              By verifying this asset, you confirm that it meets all platform requirements and is 
-              legitimate. Once verified, buyers will be able to purchase this asset.
-            </div>
+                {/* Check Admin Status */}
+                <div>
+                  <h2 className="text-xl font-semibold text-[#E1E2E2] mb-2">Check Admin Status</h2>
+                  <p className="text-[#6D6041] mb-6">Verify if an address has admin privileges</p>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-[#E1E2E2] mb-2">Address to Check</label>
+                      <input
+                        type="text"
+                        value={adminToCheck}
+                        onChange={(e) => setAdminToCheck(e.target.value)}
+                        placeholder="0x..."
+                        className="w-full px-4 py-3 bg-[#111216] border border-[#2C2C2C] text-[#E1E2E2] rounded-lg focus:ring-2 focus:ring-[#CAAB5B] focus:border-transparent font-mono text-sm placeholder-[#6D6041]"
+                      />
+                    </div>
 
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
-              gap: '12px'
-            }}>
-              <button
-                onClick={() => {
-                  setShowModal(false);
-                  setSelectedAsset(null);
-                  setActionType(null);
-                }}
-                disabled={isPending || isConfirming}
-                style={{
-                  padding: '14px',
-                  backgroundColor: '#2C2C2C',
-                  color: '#E1E2E2',
-                  border: 'none',
-                  borderRadius: '12px',
-                  fontSize: '14px',
-                  fontWeight: 'bold',
-                  cursor: isPending || isConfirming ? 'not-allowed' : 'pointer',
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleVerifyAsset}
-                disabled={isPending || isConfirming}
-                style={{
-                  padding: '14px',
-                  backgroundColor: isPending || isConfirming ? '#2C2C2C' : '#4CAF50',
-                  color: isPending || isConfirming ? '#6D6041' : '#fff',
-                  border: 'none',
-                  borderRadius: '12px',
-                  fontSize: '14px',
-                  fontWeight: 'bold',
-                  cursor: isPending || isConfirming ? 'not-allowed' : 'pointer',
-                }}
-              >
-                {isPending ? 'Confirm in wallet...' : isConfirming ? 'Verifying...' : 'Verify Asset'}
-              </button>
-            </div>
+                    {adminCheckResult !== null && adminToCheck && (
+                      <div className={`p-4 rounded-xl ${adminCheckResult ? 'bg-[#CAAB5B]/10 border border-[#CAAB5B]/30' : 'bg-red-500/10 border border-red-500/30'}`}>
+                        <p className={`font-medium ${adminCheckResult ? 'text-[#CAAB5B]' : 'text-red-500'}`}>
+                          {adminCheckResult ? '✓ This address is an admin' : '✗ This address is not an admin'}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Ownership Tab */}
+            {activeTab === 'ownership' && (
+              <div className="max-w-2xl space-y-8">
+                {/* Transfer Ownership */}
+                <div>
+                  <h2 className="text-xl font-semibold text-[#E1E2E2] mb-2">Transfer Ownership</h2>
+                  <p className="text-[#6D6041] mb-6">Transfer contract ownership to a new address</p>
+                  
+                  <div className="bg-[#CAAB5B]/10 border border-[#CAAB5B]/30 rounded-xl p-4 mb-6">
+                    <div className="flex gap-3">
+                      <AlertCircle className="w-5 h-5 text-[#CAAB5B] flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-medium text-[#E1E2E2]">Warning</p>
+                        <p className="text-sm text-[#6D6041] mt-1">
+                          Transferring ownership will revoke all your owner privileges. This action is irreversible.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-[#E1E2E2] mb-2">New Owner Address</label>
+                      <input
+                        type="text"
+                        value={newOwner}
+                        onChange={(e) => setNewOwner(e.target.value)}
+                        placeholder="0x..."
+                        className="w-full px-4 py-3 bg-[#111216] border border-[#2C2C2C] text-[#E1E2E2] rounded-lg focus:ring-2 focus:ring-[#CAAB5B] focus:border-transparent font-mono text-sm placeholder-[#6D6041]"
+                      />
+                    </div>
+                    
+                    <button
+                      onClick={transferOwnership}
+                      disabled={loading || !newOwner}
+                      className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-[#CAAB5B] text-[#121317] rounded-lg hover:bg-[#CAAB5B]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                    >
+                      {loading ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Key className="w-5 h-5" />}
+                      {loading ? 'Transferring...' : 'Transfer Ownership'}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="border-t border-[#2C2C2C]"></div>
+
+                {/* Renounce Ownership */}
+                <div>
+                  <h2 className="text-xl font-semibold text-[#E1E2E2] mb-2">Renounce Ownership</h2>
+                  <p className="text-[#6D6041] mb-6">Permanently give up contract ownership</p>
+                  
+                  <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 mb-6">
+                    <div className="flex gap-3">
+                      <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-medium text-red-500">Danger Zone</p>
+                        <p className="text-sm text-[#6D6041] mt-1">
+                          Renouncing ownership will leave the contract without an owner. This action is permanent and cannot be undone. No one will be able to perform owner-only functions.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <button
+                    onClick={renounceOwnership}
+                    disabled={loading}
+                    className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-red-500/20 border border-red-500 text-red-500 rounded-lg hover:bg-red-500 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                  >
+                    {loading ? <RefreshCw className="w-5 h-5 animate-spin" /> : <AlertCircle className="w-5 h-5" />}
+                    {loading ? 'Processing...' : 'Renounce Ownership'}
+                  </button>
+                </div>
+
+                <div className="border-t border-[#2C2C2C]"></div>
+
+                {/* Current Ownership Info */}
+                <div>
+                  <h2 className="text-xl font-semibold text-[#E1E2E2] mb-2">Current Ownership</h2>
+                  <p className="text-[#6D6041] mb-6">View current contract ownership details</p>
+                  
+                  <div className="bg-[#111216] rounded-xl p-6 space-y-4 border border-[#2C2C2C]">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-[#6D6041]">Contract Owner</span>
+                      <span className="text-sm font-mono text-[#E1E2E2]">
+                        {ownerAddress ? `${ownerAddress.slice(0, 10)}...${ownerAddress.slice(-8)}` : 'Loading...'}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-[#6D6041]">Your Status</span>
+                      <span className={`text-sm font-semibold ${isOwner ? 'text-[#CAAB5B]' : 'text-[#6D6041]'}`}>
+                        {isOwner ? 'You are the owner' : 'Not the owner'}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-[#6D6041]">Contract Address</span>
+                      <span className="text-sm font-mono text-[#E1E2E2]">
+                        {contractAddress.slice(0, 10)}...{contractAddress.slice(-8)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
-      )}
+      </div>
+
+      {/* Footer */}
+      <div className="max-w-7xl mx-auto px-4 py-8 mt-12">
+        <div className="text-center text-sm text-[#6D6041]">
+          <p>ReaLiFi Admin Dashboard v1.0</p>
+          <p className="mt-1">Powered by Hedera Testnet</p>
+        </div>
+      </div>
     </div>
   );
-}
+};
 
-// Asset Verification Card Component
-function AssetVerificationCard({ 
-  asset, 
-  onVerify, 
-  isPending, 
-  isConfirming,
-  isVerified = false 
-}) {
-  return (
-    <div
-      style={{
-        backgroundColor: '#111216',
-        border: `1px solid ${isVerified ? '#4CAF50' : '#ff9800'}`,
-        borderRadius: '12px',
-        padding: '24px',
-        transition: 'transform 0.2s, box-shadow 0.2s',
-      }}
-      onMouseEnter={(e) => {
-        if (!isVerified) {
-          e.currentTarget.style.transform = 'translateY(-4px)';
-          e.currentTarget.style.boxShadow = '0 8px 16px rgba(255, 152, 0, 0.2)';
-        }
-      }}
-      onMouseLeave={(e) => {
-        if (!isVerified) {
-          e.currentTarget.style.transform = 'translateY(0)';
-          e.currentTarget.style.boxShadow = 'none';
-        }
-      }}
-    >
-      {/* Header */}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: '20px',
-        paddingBottom: '16px',
-        borderBottom: '1px solid #2C2C2C'
-      }}>
-        <div style={{
-          backgroundColor: '#CAAB5B',
-          color: '#121317',
-          padding: '6px 12px',
-          borderRadius: '6px',
-          fontSize: '14px',
-          fontWeight: 'bold'
-        }}>
-          #{asset.tokenId.toString()}
-        </div>
-        <div style={{
-          backgroundColor: isVerified ? '#4CAF50' : '#ff9800',
-          color: '#fff',
-          padding: '6px 12px',
-          borderRadius: '6px',
-          fontSize: '12px',
-          fontWeight: '500'
-        }}>
-          {isVerified ? '✓ Verified' : '⏳ Pending'}
-        </div>
-      </div>
-
-      {/* Price */}
-      <div style={{ marginBottom: '20px' }}>
-        <div style={{
-          color: '#6D6041',
-          fontSize: '12px',
-          marginBottom: '4px',
-          textTransform: 'uppercase',
-          letterSpacing: '0.5px'
-        }}>
-          Price
-        </div>
-        <div style={{
-          color: '#CAAB5B',
-          fontSize: '28px',
-          fontWeight: 'bold'
-        }}>
-          {formatUnits(asset.price, 6)} USDC
-        </div>
-      </div>
-
-      {/* Seller Info */}
-      <div style={{ marginBottom: '20px' }}>
-        <div style={{
-          color: '#6D6041',
-          fontSize: '12px',
-          marginBottom: '4px',
-          textTransform: 'uppercase',
-          letterSpacing: '0.5px'
-        }}>
-          Seller
-        </div>
-        <div style={{
-          color: '#E1E2E2',
-          fontSize: '14px',
-          fontFamily: 'monospace',
-          backgroundColor: '#121317',
-          padding: '8px 12px',
-          borderRadius: '6px',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis'
-        }}>
-          {asset.seller.slice(0, 10)}...{asset.seller.slice(-8)}
-        </div>
-      </div>
-
-      {/* Additional Info */}
-      <div style={{
-        display: 'flex',
-        gap: '12px',
-        paddingTop: '16px',
-        borderTop: '1px solid #2C2C2C',
-        marginBottom: '20px'
-      }}>
-        <div style={{ flex: 1 }}>
-          <div style={{
-            color: '#6D6041',
-            fontSize: '11px',
-            marginBottom: '4px'
-          }}>
-            Status
-          </div>
-          <div style={{
-            color: '#E1E2E2',
-            fontSize: '14px',
-            fontWeight: '500'
-          }}>
-            {asset.sold ? 'Sold' : 'Listed'}
-          </div>
-        </div>
-        {asset.isFractionalized && (
-          <div style={{ flex: 1 }}>
-            <div style={{
-              color: '#6D6041',
-              fontSize: '11px',
-              marginBottom: '4px'
-            }}>
-              Type
-            </div>
-            <div style={{
-              color: '#E1E2E2',
-              fontSize: '14px',
-              fontWeight: '500'
-            }}>
-              Fractional
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Action Button */}
-      {!isVerified ? (
-        <button
-          onClick={onVerify}
-          disabled={isPending || isConfirming}
-          style={{
-            width: '100%',
-            padding: '12px',
-            backgroundColor: isPending || isConfirming ? '#2C2C2C' : '#4CAF50',
-            color: isPending || isConfirming ? '#6D6041' : '#fff',
-            border: 'none',
-            borderRadius: '8px',
-            fontSize: '14px',
-            fontWeight: 'bold',
-            cursor: isPending || isConfirming ? 'not-allowed' : 'pointer',
-            transition: 'opacity 0.2s',
-          }}
-          onMouseEnter={(e) => {
-            if (!isPending && !isConfirming) {
-              e.currentTarget.style.opacity = '0.9';
-            }
-          }}
-          onMouseLeave={(e) => {
-            if (!isPending && !isConfirming) {
-              e.currentTarget.style.opacity = '1';
-            }
-          }}
-        >
-          ✓ Verify Asset
-        </button>
-      ) : (
-        <div style={{
-          width: '100%',
-          padding: '12px',
-          backgroundColor: '#2C2C2C',
-          color: '#4CAF50',
-          border: 'none',
-          borderRadius: '8px',
-          fontSize: '14px',
-          fontWeight: 'bold',
-          textAlign: 'center',
-        }}>
-          ✓ Verified
-        </div>
-      )}
-    </div>
-  );
-}

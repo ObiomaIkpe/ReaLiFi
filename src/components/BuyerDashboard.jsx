@@ -1,5 +1,3 @@
-
-
 import { useState, useEffect } from 'react';
 import { useReadContract, useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { formatUnits, parseUnits } from 'viem';
@@ -19,7 +17,6 @@ export function BuyerDashboard() {
   const [needsApproval, setNeedsApproval] = useState(false);
   const [recentPurchases, setRecentPurchases] = useState([]);
   const [currentAction, setCurrentAction] = useState(null);
-
 
   const { data: usdcAddress } = useReadContract({
     address: REAL_ESTATE_DAPP_ADDRESS,
@@ -155,7 +152,6 @@ export function BuyerDashboard() {
   }
 }
 
-
   const handleCancelFullPurchase = async (tokenId) => {
   try {
     setCurrentAction('cancel-full');
@@ -223,39 +219,8 @@ export function BuyerDashboard() {
     setShowCancelModal(true);
   };
 
-  // useEffect(() => {
-  //   if (isSuccess) {
-  //     if (purchaseType === 'fractional' && selectedAsset && fractionalAmount) {
-  //       setRecentPurchases(prev => [
-  //         ...prev,
-  //         {
-  //           tokenId: selectedAsset.tokenId,
-  //           amount: fractionalAmount,
-  //           timestamp: Date.now()
-  //         }
-  //       ]);
-  //     }
-      
-  //     refetchBalance();
-  //     refetchAllowance();
-  //     refetchPortfolio();
-      
-  //     setTimeout(() => {
-  //       setShowPurchaseModal(false);
-  //       setShowCancelModal(false);
-  //       setSelectedAsset(null);
-  //       setPurchaseType(null);
-  //       setFractionalAmount('');
-  //       setCancelAmount('');
-  //       refetchAssets();
-  //     }, 2000);
-  //   }
-  // }, [isSuccess, purchaseType, selectedAsset, fractionalAmount, refetchBalance, refetchAllowance, refetchPortfolio, refetchAssets]);
-
-
   useEffect(() => {
   if (isSuccess) {
-    // Only trigger cleanup for actual purchase/cancel actions, not approvals
     const shouldCleanup = ['buy-whole', 'buy-fractional', 'cancel-full', 'cancel-fractional'].includes(currentAction);
     
     if (shouldCleanup) {
@@ -285,17 +250,16 @@ export function BuyerDashboard() {
         refetchAssets();
       }, 2000);
     } else if (currentAction === 'approve') {
-      // After approval, just refetch allowance and reset action
       refetchAllowance();
       setCurrentAction(null);
       setNeedsApproval(false);
     } else if (currentAction === 'mint') {
-      // After minting, just refetch balance
       refetchBalance();
       setCurrentAction(null);
     }
   }
 }, [isSuccess, currentAction, purchaseType, selectedAsset, fractionalAmount, refetchBalance, refetchAllowance, refetchPortfolio, refetchAssets]);
+
   useEffect(() => {
     if (recentPurchases.length > 0) {
       const interval = setInterval(() => {
@@ -317,27 +281,13 @@ export function BuyerDashboard() {
 
   if (!isConnected) {
     return (
-      <div style={{
-        backgroundColor: '#121317',
-        minHeight: '100vh',
-        padding: '40px 20px',
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-      }}>
-        <div style={{
-          backgroundColor: '#111216',
-          border: '1px solid #2C2C2C',
-          borderRadius: '12px',
-          padding: '40px',
-          textAlign: 'center',
-          maxWidth: '400px',
-        }}>
-          <div style={{ fontSize: '48px', marginBottom: '16px' }}>🔒</div>
-          <div style={{ color: '#E1E2E2', fontSize: '18px', marginBottom: '8px' }}>
+      <div className="bg-[#121317] min-h-screen py-10 px-5 flex justify-center items-center">
+        <div className="bg-[#111216] border border-[#2C2C2C] rounded-xl p-10 text-center max-w-md">
+          <div className="text-5xl mb-4">🔒</div>
+          <div className="text-[#E1E2E2] text-lg mb-2">
             Connect Your Wallet
           </div>
-          <div style={{ color: '#6D6041', fontSize: '14px' }}>
+          <div className="text-[#6D6041] text-sm">
             Please connect your wallet to browse and purchase properties
           </div>
         </div>
@@ -346,214 +296,109 @@ export function BuyerDashboard() {
   }
 
   return (
-    <div style={{
-      backgroundColor: '#121317',
-      minHeight: '100vh',
-      padding: '40px 20px'
-    }}>
-      <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '40px',
-          flexWrap: 'wrap',
-          gap: '16px'
-        }}>
+    <div className="bg-[#121317] min-h-screen py-10 px-5">
+      <div className="max-w-7xl mx-auto">
+        <div className="flex justify-between items-center mb-10 flex-wrap gap-4">
           <div>
-            <h1 style={{
-              color: '#CAAB5B',
-              fontSize: '32px',
-              fontWeight: 'bold',
-              margin: 0,
-              marginBottom: '8px'
-            }}>
+            <h1 className="text-[#CAAB5B] text-3xl font-bold mb-2">
               Buyer Dashboard
             </h1>
-            <p style={{
-              color: '#6D6041',
-              fontSize: '14px',
-              margin: 0
-            }}>
+            <p className="text-[#6D6041] text-sm">
               Browse and purchase real estate assets
             </p>
           </div>
-          <div style={{
-            backgroundColor: '#111216',
-            border: '1px solid #CAAB5B',
-            borderRadius: '8px',
-            padding: '8px 16px',
-            color: '#CAAB5B',
-            fontSize: '14px',
-            fontWeight: 'bold',
-          }}>
+          <div className="bg-[#111216] border border-[#CAAB5B] rounded-lg px-4 py-2 text-[#CAAB5B] text-sm font-bold">
             🛒 Buyer
           </div>
         </div>
 
-        <div style={{
-          backgroundColor: '#111216',
-          border: '1px solid #2C2C2C',
-          borderRadius: '12px',
-          padding: '24px',
-          marginBottom: '40px'
-        }}>
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            flexWrap: 'wrap',
-            gap: '16px'
-          }}>
+        <div className="bg-[#111216] border border-[#2C2C2C] rounded-xl p-6 mb-10">
+          <div className="flex justify-between items-center flex-wrap gap-4">
             <div>
-              <div style={{
-                color: '#6D6041',
-                fontSize: '12px',
-                marginBottom: '8px',
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px'
-              }}>
+              <div className="text-[#6D6041] text-xs mb-2 uppercase tracking-wide">
                 Your USDC Balance
               </div>
-              <div style={{
-                color: '#CAAB5B',
-                fontSize: '36px',
-                fontWeight: 'bold'
-              }}>
+              <div className="text-[#CAAB5B] text-4xl font-bold">
                 {usdcBalance ? formatUnits(usdcBalance, 6) : '0'} USDC
               </div>
             </div>
             <button
               onClick={handleMintUSDC}
               disabled={isPending || isConfirming}
-              style={{
-                padding: '12px 24px',
-                backgroundColor: isPending || isConfirming ? '#2C2C2C' : '#4CAF50',
-                color: isPending || isConfirming ? '#6D6041' : '#fff',
-                border: 'none',
-                borderRadius: '8px',
-                fontSize: '14px',
-                fontWeight: 'bold',
-                cursor: isPending || isConfirming ? 'not-allowed' : 'pointer',
-              }}
+              className={`px-6 py-3 rounded-lg text-sm font-bold ${
+                isPending || isConfirming
+                  ? 'bg-[#2C2C2C] text-[#6D6041] cursor-not-allowed'
+                  : 'bg-[#4CAF50] text-white cursor-pointer'
+              }`}
             >
               💰 Mint Test USDC
             </button>
           </div>
         </div>
 
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-          gap: '16px',
-          marginBottom: '40px'
-        }}>
-          <div style={{
-            backgroundColor: '#111216',
-            border: '1px solid #2C2C2C',
-            borderRadius: '12px',
-            padding: '20px',
-          }}>
-            <div style={{ color: '#6D6041', fontSize: '12px', marginBottom: '8px' }}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
+          <div className="bg-[#111216] border border-[#2C2C2C] rounded-xl p-5">
+            <div className="text-[#6D6041] text-xs mb-2">
               AVAILABLE PROPERTIES
             </div>
-            <div style={{ color: '#E1E2E2', fontSize: '28px', fontWeight: 'bold' }}>
+            <div className="text-[#E1E2E2] text-3xl font-bold">
               {wholeAssets.length}
             </div>
           </div>
-          <div style={{
-            backgroundColor: '#111216',
-            border: '1px solid #2C2C2C',
-            borderRadius: '12px',
-            padding: '20px',
-          }}>
-            <div style={{ color: '#6D6041', fontSize: '12px', marginBottom: '8px' }}>
+          <div className="bg-[#111216] border border-[#2C2C2C] rounded-xl p-5">
+            <div className="text-[#6D6041] text-xs mb-2">
               FRACTIONAL ASSETS
             </div>
-            <div style={{ color: '#CAAB5B', fontSize: '28px', fontWeight: 'bold' }}>
+            <div className="text-[#CAAB5B] text-3xl font-bold">
               {fractionalizedAssets.length}
             </div>
           </div>
-          <div style={{
-            backgroundColor: '#111216',
-            border: '1px solid #2C2C2C',
-            borderRadius: '12px',
-            padding: '20px',
-          }}>
-            <div style={{ color: '#6D6041', fontSize: '12px', marginBottom: '8px' }}>
+          <div className="bg-[#111216] border border-[#2C2C2C] rounded-xl p-5">
+            <div className="text-[#6D6041] text-xs mb-2">
               MY PROPERTIES
             </div>
-            <div style={{ color: '#4CAF50', fontSize: '28px', fontWeight: 'bold' }}>
+            <div className="text-[#4CAF50] text-3xl font-bold">
               {completedFullPurchases.length}
             </div>
           </div>
-          <div style={{
-            backgroundColor: '#111216',
-            border: '1px solid #2C2C2C',
-            borderRadius: '12px',
-            padding: '20px',
-          }}>
-            <div style={{ color: '#6D6041', fontSize: '12px', marginBottom: '8px' }}>
+          <div className="bg-[#111216] border border-[#2C2C2C] rounded-xl p-5">
+            <div className="text-[#6D6041] text-xs mb-2">
               TOTAL INVESTED
             </div>
-            <div style={{ color: '#4CAF50', fontSize: '24px', fontWeight: 'bold' }}>
+            <div className="text-[#4CAF50] text-2xl font-bold">
               {formatUnits(totalInvestment, 6)} USDC
             </div>
           </div>
         </div>
 
         {hash && (
-          <div style={{
-            marginBottom: '24px',
-            padding: '16px',
-            backgroundColor: '#111216',
-            border: '1px solid #2C2C2C',
-            borderRadius: '12px',
-          }}>
+          <div className="mb-6 p-4 bg-[#111216] border border-[#2C2C2C] rounded-xl">
             {isConfirming && (
-              <div style={{ color: '#ff9800', marginBottom: '8px', fontWeight: 'bold' }}>
+              <div className="text-[#ff9800] mb-2 font-bold">
                 ⏳ Transaction confirming...
               </div>
             )}
             {isSuccess && (
-              <div style={{ color: '#4CAF50', marginBottom: '8px', fontWeight: 'bold' }}>
+              <div className="text-[#4CAF50] mb-2 font-bold">
                 ✓ Transaction completed successfully!
               </div>
             )}
-            <div style={{ color: '#6D6041', fontSize: '12px', marginBottom: '4px' }}>
+            <div className="text-[#6D6041] text-xs mb-1">
               Transaction Hash:
             </div>
-            <div style={{
-              color: '#E1E2E2',
-              fontSize: '12px',
-              fontFamily: 'monospace',
-              wordBreak: 'break-all',
-            }}>
+            <div className="text-[#E1E2E2] text-xs font-mono break-all">
               {hash}
             </div>
           </div>
         )}
 
         {error && (
-          <div style={{
-            marginBottom: '24px',
-            padding: '16px',
-            backgroundColor: '#f44336',
-            borderRadius: '12px',
-            color: '#fff',
-          }}>
+          <div className="mb-6 p-4 bg-[#f44336] rounded-xl text-white">
             Error: {error.message}
           </div>
         )}
 
-        <div style={{
-          display: 'flex',
-          gap: '8px',
-          marginBottom: '32px',
-          borderBottom: '1px solid #2C2C2C',
-          paddingBottom: '0',
-          flexWrap: 'wrap'
-        }}>
+        <div className="flex gap-2 mb-8 border-b border-[#2C2C2C] flex-wrap">
           <TabButton
             label="Browse Properties"
             isActive={selectedTab === 'browse'}
@@ -757,37 +602,25 @@ function TabButton({ label, isActive, onClick, badge, color = '#CAAB5B' }) {
   return (
     <button
       onClick={onClick}
+      className={`px-6 py-3 text-sm font-bold border-b-2 transition-all relative ${
+        isActive
+          ? 'bg-[#111216] border-b-2'
+          : 'bg-transparent text-[#6D6041] border-transparent'
+      }`}
       style={{
-        padding: '12px 24px',
-        backgroundColor: isActive ? '#111216' : 'transparent',
-        color: isActive ? color : '#6D6041',
-        border: 'none',
-        borderBottom: isActive ? `2px solid ${color}` : '2px solid transparent',
-        fontSize: '14px',
-        fontWeight: 'bold',
-        cursor: 'pointer',
-        transition: 'all 0.2s',
-        position: 'relative'
+        color: isActive ? color : undefined,
+        borderBottomColor: isActive ? color : undefined
       }}
     >
       {label}
       {badge !== undefined && badge > 0 && (
-        <span style={{
-          position: 'absolute',
-          top: '8px',
-          right: '8px',
-          backgroundColor: color,
-          color: color === '#6D6041' ? '#E1E2E2' : '#121317',
-          borderRadius: '50%',
-          minWidth: '20px',
-          height: '20px',
-          fontSize: '11px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontWeight: 'bold',
-          padding: '0 6px'
-        }}>
+        <span
+          className="absolute top-2 right-2 rounded-full min-w-[20px] h-5 text-xs flex items-center justify-center font-bold px-1.5"
+          style={{
+            backgroundColor: color,
+            color: color === '#6D6041' ? '#E1E2E2' : '#121317'
+          }}
+        >
           {badge}
         </span>
       )}
@@ -802,34 +635,18 @@ function TabContent({ title, count, emptyIcon, emptyMessage, emptySubtext, child
     <>
       {hasContent ? (
         <>
-          <h2 style={{
-            color: '#CAAB5B',
-            fontSize: '24px',
-            fontWeight: 'bold',
-            marginBottom: '24px',
-          }}>
+          <h2 className="text-[#CAAB5B] text-2xl font-bold mb-6">
             {title} ({count})
           </h2>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
-            gap: '24px'
-          }}>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {children}
           </div>
         </>
       ) : (
-        <div style={{
-          textAlign: 'center',
-          padding: '60px 20px',
-          backgroundColor: '#111216',
-          border: '1px solid #2C2C2C',
-          borderRadius: '12px',
-          color: '#6D6041'
-        }}>
-          <div style={{ fontSize: '48px', marginBottom: '16px' }}>{emptyIcon}</div>
-          <div style={{ fontSize: '18px', marginBottom: '8px' }}>{emptyMessage}</div>
-          <div style={{ fontSize: '14px' }}>{emptySubtext}</div>
+        <div className="text-center py-16 bg-[#111216] border border-[#2C2C2C] rounded-xl text-[#6D6041]">
+          <div className="text-5xl mb-4">{emptyIcon}</div>
+          <div className="text-lg mb-2">{emptyMessage}</div>
+          <div className="text-sm">{emptySubtext}</div>
         </div>
       )}
     </>
@@ -848,68 +665,23 @@ function AssetCard({ asset, onPurchase, isPending, isConfirming, type }) {
   };
 
   return (
-    <div
-      style={{
-        backgroundColor: '#111216',
-        border: '1px solid #2C2C2C',
-        borderRadius: '12px',
-        padding: '24px',
-        transition: 'transform 0.2s, box-shadow 0.2s',
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.transform = 'translateY(-4px)';
-        e.currentTarget.style.boxShadow = '0 8px 16px rgba(202, 171, 91, 0.2)';
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.transform = 'translateY(0)';
-        e.currentTarget.style.boxShadow = 'none';
-      }}
-    >
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: '20px',
-        paddingBottom: '16px',
-        borderBottom: '1px solid #2C2C2C'
-      }}>
-        <div style={{
-          backgroundColor: '#CAAB5B',
-          color: '#121317',
-          padding: '6px 12px',
-          borderRadius: '6px',
-          fontSize: '14px',
-          fontWeight: 'bold'
-        }}>
+    <div className="bg-[#111216] border border-[#2C2C2C] rounded-xl p-6 transition-all hover:-translate-y-1 hover:shadow-lg hover:shadow-[#CAAB5B]/20">
+      <div className="flex justify-between items-center mb-5 pb-4 border-b border-[#2C2C2C]">
+        <div className="bg-[#CAAB5B] text-[#121317] px-3 py-1.5 rounded-md text-sm font-bold">
           #{asset.tokenId.toString()}
         </div>
-        <div style={{
-          backgroundColor: type === 'fractional' ? '#4CAF50' : '#CAAB5B',
-          color: type === 'fractional' ? '#fff' : '#121317',
-          padding: '6px 12px',
-          borderRadius: '6px',
-          fontSize: '12px',
-          fontWeight: '500'
-        }}>
+        <div className={`px-3 py-1.5 rounded-md text-xs font-medium ${
+          type === 'fractional' ? 'bg-[#4CAF50] text-white' : 'bg-[#CAAB5B] text-[#121317]'
+        }`}>
           {type === 'fractional' ? '🔹 Fractional' : '🏠 Whole'}
         </div>
       </div>
 
-      <div style={{ marginBottom: '20px' }}>
-        <div style={{
-          color: '#6D6041',
-          fontSize: '12px',
-          marginBottom: '4px',
-          textTransform: 'uppercase',
-          letterSpacing: '0.5px'
-        }}>
+      <div className="mb-5">
+        <div className="text-[#6D6041] text-xs mb-1 uppercase tracking-wide">
           {type === 'fractional' ? 'Price Per Token' : 'Total Price'}
         </div>
-        <div style={{
-          color: '#CAAB5B',
-          fontSize: '28px',
-          fontWeight: 'bold'
-        }}>
+        <div className="text-[#CAAB5B] text-3xl font-bold">
           {type === 'fractional' 
             ? formatUnits(asset.pricePerFractionalToken, 6)
             : formatUnits(asset.price, 6)} USDC
@@ -917,44 +689,28 @@ function AssetCard({ asset, onPurchase, isPending, isConfirming, type }) {
       </div>
 
       {type === 'fractional' && (
-        <div style={{
-          backgroundColor: '#121317',
-          border: '1px solid #2C2C2C',
-          borderRadius: '8px',
-          padding: '12px',
-          marginBottom: '20px'
-        }}>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: '12px',
-            marginBottom: '12px'
-          }}>
+        <div className="bg-[#121317] border border-[#2C2C2C] rounded-lg p-3 mb-5">
+          <div className="grid grid-cols-2 gap-3 mb-3">
             <div>
-              <div style={{ color: '#6D6041', fontSize: '11px', marginBottom: '4px' }}>
+              <div className="text-[#6D6041] text-xs mb-1">
                 Total Tokens
               </div>
-              <div style={{ color: '#E1E2E2', fontSize: '16px', fontWeight: 'bold' }}>
+              <div className="text-[#E1E2E2] text-base font-bold">
                 {asset.totalFractionalTokens?.toString() || '0'}
               </div>
             </div>
             <div>
-              <div style={{ color: '#6D6041', fontSize: '11px', marginBottom: '4px' }}>
+              <div className="text-[#6D6041] text-xs mb-1">
                 Available
               </div>
-              <div style={{ color: '#4CAF50', fontSize: '16px', fontWeight: 'bold' }}>
+              <div className="text-[#4CAF50] text-base font-bold">
                 {asset.remainingFractionalTokens?.toString() || '0'}
               </div>
             </div>
           </div>
 
           <div>
-            <label style={{
-              color: '#6D6041',
-              fontSize: '11px',
-              display: 'block',
-              marginBottom: '4px'
-            }}>
+            <label className="text-[#6D6041] text-xs block mb-1">
               Tokens to Buy
             </label>
             <input
@@ -963,17 +719,9 @@ function AssetCard({ asset, onPurchase, isPending, isConfirming, type }) {
               onChange={(e) => setLocalAmount(e.target.value)}
               min="1"
               max={asset.remainingFractionalTokens?.toString() || '0'}
-              style={{
-                width: '100%',
-                padding: '8px',
-                backgroundColor: '#111216',
-                border: '1px solid #2C2C2C',
-                borderRadius: '6px',
-                color: '#E1E2E2',
-                fontSize: '14px'
-              }}
+              className="w-full p-2 bg-[#111216] border border-[#2C2C2C] rounded-md text-[#E1E2E2] text-sm"
             />
-            <div style={{ color: '#6D6041', fontSize: '11px', marginTop: '4px' }}>
+            <div className="text-[#6D6041] text-xs mt-1">
               Total: {localAmount && asset.pricePerFractionalToken 
                 ? formatUnits(BigInt(localAmount) * asset.pricePerFractionalToken, 6)
                 : '0'} USDC
@@ -982,19 +730,9 @@ function AssetCard({ asset, onPurchase, isPending, isConfirming, type }) {
         </div>
       )}
 
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        paddingTop: '16px',
-        borderTop: '1px solid #2C2C2C',
-        marginBottom: '20px'
-      }}>
-        <div style={{ color: '#6D6041', fontSize: '12px' }}>Seller</div>
-        <div style={{
-          color: '#E1E2E2',
-          fontSize: '12px',
-          fontFamily: 'monospace'
-        }}>
+      <div className="flex justify-between pt-4 border-t border-[#2C2C2C] mb-5">
+        <div className="text-[#6D6041] text-xs">Seller</div>
+        <div className="text-[#E1E2E2] text-xs font-mono">
           {asset.seller.slice(0, 6)}...{asset.seller.slice(-4)}
         </div>
       </div>
@@ -1002,28 +740,11 @@ function AssetCard({ asset, onPurchase, isPending, isConfirming, type }) {
       <button
         onClick={handlePurchaseClick}
         disabled={isPending || isConfirming || (type === 'fractional' && (!localAmount || Number(localAmount) <= 0))}
-        style={{
-          width: '100%',
-          padding: '12px',
-          backgroundColor: isPending || isConfirming ? '#2C2C2C' : '#4CAF50',
-          color: isPending || isConfirming ? '#6D6041' : '#fff',
-          border: 'none',
-          borderRadius: '8px',
-          fontSize: '14px',
-          fontWeight: 'bold',
-          cursor: isPending || isConfirming ? 'not-allowed' : 'pointer',
-          transition: 'opacity 0.2s',
-        }}
-        onMouseEnter={(e) => {
-          if (!isPending && !isConfirming) {
-            e.currentTarget.style.opacity = '0.9';
-          }
-        }}
-        onMouseLeave={(e) => {
-          if (!isPending && !isConfirming) {
-            e.currentTarget.style.opacity = '1';
-          }
-        }}
+        className={`w-full py-3 rounded-lg text-sm font-bold transition-opacity ${
+          isPending || isConfirming
+            ? 'bg-[#2C2C2C] text-[#6D6041] cursor-not-allowed'
+            : 'bg-[#4CAF50] text-white cursor-pointer hover:opacity-90'
+        }`}
       >
         {type === 'fractional' ? '🔹 Buy Tokens' : '🏠 Buy Property'}
       </button>
@@ -1033,99 +754,47 @@ function AssetCard({ asset, onPurchase, isPending, isConfirming, type }) {
 
 function PortfolioCard({ item, onCancel }) {
   return (
-    <div style={{
-      backgroundColor: '#111216',
-      border: '1px solid #4CAF50',
-      borderRadius: '12px',
-      padding: '24px',
-    }}>
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: '20px',
-        paddingBottom: '16px',
-        borderBottom: '1px solid #2C2C2C'
-      }}>
-        <div style={{
-          backgroundColor: '#CAAB5B',
-          color: '#121317',
-          padding: '6px 12px',
-          borderRadius: '6px',
-          fontSize: '14px',
-          fontWeight: 'bold'
-        }}>
+    <div className="bg-[#111216] border border-[#4CAF50] rounded-xl p-6">
+      <div className="flex justify-between items-center mb-5 pb-4 border-b border-[#2C2C2C]">
+        <div className="bg-[#CAAB5B] text-[#121317] px-3 py-1.5 rounded-md text-sm font-bold">
           #{item.tokenId.toString()}
         </div>
-        <div style={{
-          backgroundColor: '#4CAF50',
-          color: '#fff',
-          padding: '6px 12px',
-          borderRadius: '6px',
-          fontSize: '12px',
-          fontWeight: '500'
-        }}>
+        <div className="bg-[#4CAF50] text-white px-3 py-1.5 rounded-md text-xs font-medium">
           ✓ Invested
         </div>
       </div>
 
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: '1fr 1fr',
-        gap: '16px',
-        marginBottom: '16px'
-      }}>
+      <div className="grid grid-cols-2 gap-4 mb-4">
         <div>
-          <div style={{ color: '#6D6041', fontSize: '12px', marginBottom: '4px' }}>
+          <div className="text-[#6D6041] text-xs mb-1">
             Tokens Owned
           </div>
-          <div style={{ color: '#E1E2E2', fontSize: '20px', fontWeight: 'bold' }}>
+          <div className="text-[#E1E2E2] text-xl font-bold">
             {item.fractionalTokensOwned.toString()}
           </div>
         </div>
         <div>
-          <div style={{ color: '#6D6041', fontSize: '12px', marginBottom: '4px' }}>
+          <div className="text-[#6D6041] text-xs mb-1">
             Ownership %
           </div>
-          <div style={{ color: '#4CAF50', fontSize: '20px', fontWeight: 'bold' }}>
-            {(Number(item.ownershipPercentage) / 100).toFixed(2)}%
+          <div className="text-[#4CAF50] text-xl font-bold">
+            {(Number(item.ownershipPercentage) / 1e17).toFixed(2)}%
           </div>
         </div>
       </div>
 
-      <div style={{
-        paddingTop: '16px',
-        borderTop: '1px solid #2C2C2C',
-        marginBottom: '16px'
-      }}>
-        <div style={{ color: '#6D6041', fontSize: '12px', marginBottom: '4px' }}>
+      <div className="pt-4 border-t border-[#2C2C2C] mb-4">
+        <div className="text-[#6D6041] text-xs mb-1">
           Investment Value
         </div>
-        <div style={{ color: '#CAAB5B', fontSize: '24px', fontWeight: 'bold' }}>
+        <div className="text-[#CAAB5B] text-2xl font-bold">
           {formatUnits(item.investmentValue, 6)} USDC
         </div>
       </div>
 
       <button
         onClick={() => onCancel(item)}
-        style={{
-          width: '100%',
-          padding: '12px',
-          backgroundColor: '#f44336',
-          color: '#fff',
-          border: 'none',
-          borderRadius: '8px',
-          fontSize: '14px',
-          fontWeight: 'bold',
-          cursor: 'pointer',
-          transition: 'opacity 0.2s',
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.opacity = '0.9';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.opacity = '1';
-        }}
+        className="w-full py-3 bg-[#f44336] text-white border-none rounded-lg text-sm font-bold cursor-pointer transition-opacity hover:opacity-90"
       >
         Cancel Fractional Investment
       </button>
@@ -1135,78 +804,33 @@ function PortfolioCard({ item, onCancel }) {
 
 function OwnedPropertyCard({ asset }) {
   return (
-    <div style={{
-      backgroundColor: '#111216',
-      border: '1px solid #4CAF50',
-      borderRadius: '12px',
-      padding: '24px',
-    }}>
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: '20px',
-        paddingBottom: '16px',
-        borderBottom: '1px solid #2C2C2C'
-      }}>
-        <div style={{
-          backgroundColor: '#CAAB5B',
-          color: '#121317',
-          padding: '6px 12px',
-          borderRadius: '6px',
-          fontSize: '14px',
-          fontWeight: 'bold'
-        }}>
+    <div className="bg-[#111216] border border-[#4CAF50] rounded-xl p-6">
+      <div className="flex justify-between items-center mb-5 pb-4 border-b border-[#2C2C2C]">
+        <div className="bg-[#CAAB5B] text-[#121317] px-3 py-1.5 rounded-md text-sm font-bold">
           #{asset.tokenId.toString()}
         </div>
-        <div style={{
-          backgroundColor: '#4CAF50',
-          color: '#fff',
-          padding: '6px 12px',
-          borderRadius: '6px',
-          fontSize: '12px',
-          fontWeight: '500'
-        }}>
+        <div className="bg-[#4CAF50] text-white px-3 py-1.5 rounded-md text-xs font-medium">
           ✓ Owned
         </div>
       </div>
 
-      <div style={{ marginBottom: '20px' }}>
-        <div style={{ color: '#6D6041', fontSize: '12px', marginBottom: '4px' }}>
+      <div className="mb-5">
+        <div className="text-[#6D6041] text-xs mb-1">
           Purchase Price
         </div>
-        <div style={{ color: '#CAAB5B', fontSize: '28px', fontWeight: 'bold' }}>
+        <div className="text-[#CAAB5B] text-[28px] font-bold">
           {formatUnits(asset.price, 6)} USDC
         </div>
       </div>
 
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        paddingTop: '16px',
-        borderTop: '1px solid #2C2C2C',
-        marginBottom: '16px'
-      }}>
-        <div style={{ color: '#6D6041', fontSize: '12px' }}>Seller</div>
-        <div style={{
-          color: '#E1E2E2',
-          fontSize: '12px',
-          fontFamily: 'monospace'
-        }}>
+      <div className="flex justify-between pt-4 border-t border-[#2C2C2C] mb-4">
+        <div className="text-[#6D6041] text-xs">Seller</div>
+        <div className="text-[#E1E2E2] text-xs font-mono">
           {asset.seller.slice(0, 6)}...{asset.seller.slice(-4)}
         </div>
       </div>
 
-      <div style={{
-        backgroundColor: '#4CAF5020',
-        border: '1px solid #4CAF50',
-        borderRadius: '8px',
-        padding: '12px',
-        textAlign: 'center',
-        color: '#4CAF50',
-        fontSize: '14px',
-        fontWeight: 'bold'
-      }}>
+      <div className="bg-[#4CAF5020] border border-[#4CAF50] rounded-lg p-3 text-center text-[#4CAF50] text-sm font-bold">
         🏡 You own this property
       </div>
     </div>
@@ -1221,87 +845,46 @@ function PendingPurchaseCard({ asset, onCancel, isPending, isConfirming, cancell
   const refundAmount = BigInt(asset.price.toString()) - penaltyAmount;
 
   return (
-    <div style={{
-      backgroundColor: '#111216',
-      border: '1px solid #ff9800',
-      borderRadius: '12px',
-      padding: '24px',
-    }}>
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: '20px',
-        paddingBottom: '16px',
-        borderBottom: '1px solid #2C2C2C'
-      }}>
-        <div style={{
-          backgroundColor: '#CAAB5B',
-          color: '#121317',
-          padding: '6px 12px',
-          borderRadius: '6px',
-          fontSize: '14px',
-          fontWeight: 'bold'
-        }}>
+    <div className="bg-[#111216] border border-[#ff9800] rounded-xl p-6">
+      <div className="flex justify-between items-center mb-5 pb-4 border-b border-[#2C2C2C]">
+        <div className="bg-[#CAAB5B] text-[#121317] px-3 py-1.5 rounded-md text-sm font-bold">
           #{asset.tokenId.toString()}
         </div>
-        <div style={{
-          backgroundColor: '#ff9800',
-          color: '#fff',
-          padding: '6px 12px',
-          borderRadius: '6px',
-          fontSize: '12px',
-          fontWeight: '500'
-        }}>
+        <div className="bg-[#ff9800] text-white px-3 py-1.5 rounded-md text-xs font-medium">
           ⏳ Pending
         </div>
       </div>
 
-      <div style={{ marginBottom: '20px' }}>
-        <div style={{ color: '#6D6041', fontSize: '12px', marginBottom: '4px' }}>
+      <div className="mb-5">
+        <div className="text-[#6D6041] text-xs mb-1">
           Purchase Price
         </div>
-        <div style={{ color: '#CAAB5B', fontSize: '28px', fontWeight: 'bold' }}>
+        <div className="text-[#CAAB5B] text-[28px] font-bold">
           {formatUnits(asset.price, 6)} USDC
         </div>
       </div>
 
-      <div style={{
-        backgroundColor: '#ff980020',
-        border: '1px solid #ff9800',
-        borderRadius: '8px',
-        padding: '12px',
-        marginBottom: '20px',
-        fontSize: '12px',
-        color: '#E1E2E2'
-      }}>
-        <div style={{ fontWeight: 'bold', marginBottom: '8px', color: '#ff9800' }}>
+      <div className="bg-[#ff980020] border border-[#ff9800] rounded-lg p-3 mb-5 text-xs text-[#E1E2E2]">
+        <div className="font-bold mb-2 text-[#ff9800]">
           ⏳ Awaiting Seller Confirmation
         </div>
-        <div style={{ marginBottom: '8px' }}>
+        <div className="mb-2">
           The seller needs to confirm receipt of payment. You can cancel this purchase, but a penalty will apply:
         </div>
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: '8px',
-          marginTop: '12px',
-          paddingTop: '12px',
-          borderTop: '1px solid #ff9800'
-        }}>
+        <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-[#ff9800]">
           <div>
-            <div style={{ color: '#6D6041', fontSize: '11px', marginBottom: '4px' }}>
+            <div className="text-[#6D6041] text-[11px] mb-1">
               Penalty ({cancellationPenalty?.toString()}%)
             </div>
-            <div style={{ color: '#f44336', fontSize: '14px', fontWeight: 'bold' }}>
+            <div className="text-[#f44336] text-sm font-bold">
               -{formatUnits(penaltyAmount, 6)} USDC
             </div>
           </div>
           <div>
-            <div style={{ color: '#6D6041', fontSize: '11px', marginBottom: '4px' }}>
+            <div className="text-[#6D6041] text-[11px] mb-1">
               You'll Receive
             </div>
-            <div style={{ color: '#4CAF50', fontSize: '14px', fontWeight: 'bold' }}>
+            <div className="text-[#4CAF50] text-sm font-bold">
               {formatUnits(refundAmount, 6)} USDC
             </div>
           </div>
@@ -1311,17 +894,7 @@ function PendingPurchaseCard({ asset, onCancel, isPending, isConfirming, cancell
       <button
         onClick={onCancel}
         disabled={isPending || isConfirming}
-        style={{
-          width: '100%',
-          padding: '12px',
-          backgroundColor: isPending || isConfirming ? '#2C2C2C' : '#f44336',
-          color: isPending || isConfirming ? '#6D6041' : '#fff',
-          border: 'none',
-          borderRadius: '8px',
-          fontSize: '14px',
-          fontWeight: 'bold',
-          cursor: isPending || isConfirming ? 'not-allowed' : 'pointer',
-        }}
+        className="w-full py-3 border-none rounded-lg text-sm font-bold disabled:bg-[#2C2C2C] disabled:text-[#6D6041] disabled:cursor-not-allowed bg-[#f44336] text-white cursor-pointer"
       >
         {isPending ? 'Confirm in wallet...' : isConfirming ? 'Canceling...' : 'Cancel Purchase'}
       </button>
@@ -1331,64 +904,28 @@ function PendingPurchaseCard({ asset, onCancel, isPending, isConfirming, cancell
 
 function CanceledPurchaseCard({ asset }) {
   return (
-    <div style={{
-      backgroundColor: '#111216',
-      border: '1px solid #6D6041',
-      borderRadius: '12px',
-      padding: '24px',
-      opacity: 0.7
-    }}>
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: '20px',
-        paddingBottom: '16px',
-        borderBottom: '1px solid #2C2C2C'
-      }}>
-        <div style={{
-          backgroundColor: '#6D6041',
-          color: '#E1E2E2',
-          padding: '6px 12px',
-          borderRadius: '6px',
-          fontSize: '14px',
-          fontWeight: 'bold'
-        }}>
+    <div className="bg-[#111216] border border-[#6D6041] rounded-xl p-6 opacity-70">
+      <div className="flex justify-between items-center mb-5 pb-4 border-b border-[#2C2C2C]">
+        <div className="bg-[#6D6041] text-[#E1E2E2] px-3 py-1.5 rounded-md text-sm font-bold">
           #{asset.tokenId.toString()}
         </div>
-        <div style={{
-          backgroundColor: '#6D6041',
-          color: '#E1E2E2',
-          padding: '6px 12px',
-          borderRadius: '6px',
-          fontSize: '12px',
-          fontWeight: '500'
-        }}>
+        <div className="bg-[#6D6041] text-[#E1E2E2] px-3 py-1.5 rounded-md text-xs font-medium">
           ✕ Canceled
         </div>
       </div>
 
-      <div style={{ marginBottom: '20px' }}>
-        <div style={{ color: '#6D6041', fontSize: '12px', marginBottom: '4px' }}>
+      <div className="mb-5">
+        <div className="text-[#6D6041] text-xs mb-1">
           Purchase Price
         </div>
-        <div style={{ color: '#6D6041', fontSize: '28px', fontWeight: 'bold' }}>
+        <div className="text-[#6D6041] text-[28px] font-bold">
           {formatUnits(asset.price, 6)} USDC
         </div>
       </div>
 
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        paddingTop: '16px',
-        borderTop: '1px solid #2C2C2C'
-      }}>
-        <div style={{ color: '#6D6041', fontSize: '12px' }}>Status</div>
-        <div style={{
-          color: '#6D6041',
-          fontSize: '12px',
-          fontWeight: 'bold'
-        }}>
+      <div className="flex justify-between pt-4 border-t border-[#2C2C2C]">
+        <div className="text-[#6D6041] text-xs">Status</div>
+        <div className="text-[#6D6041] text-xs font-bold">
           Purchase was canceled
         </div>
       </div>

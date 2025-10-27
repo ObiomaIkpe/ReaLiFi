@@ -10,6 +10,7 @@ const Navbar = () => {
     { name: "My Portfolio", path: "/portfolio" },
     { name: "Upload asset", path: "/upload" },
     { name: "Admin", path: "/admin" },
+    { name: "seller dashboard", path: "seller-dashboard"}
   ];
 
   return (
