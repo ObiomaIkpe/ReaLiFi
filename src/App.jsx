@@ -12,6 +12,7 @@ import { BuyerDashboard } from "./components/BuyerDashboard";
 import { SellerDashboard } from "./components/SellerDashboard";
 import AdminPageM from "./pages/AdminPageM";
 import BuyerDashboardPage from "./pages/BuyerDashBoardPage";
+import { PropertyCardTest } from "./components/test/PropertyCardTest";
 
 function App() {
   return (
@@ -24,6 +25,8 @@ function App() {
          <Route path="/" element={<div className="text-center text-text-primary mt-10"><HomePage /></div>} />
           <Route path="/upload" element={<MultiStepForm />} />
           <Route path="/assets" element={<AssetsPage />} />
+            <Route path="/test/property-card" element={<PropertyCardTest />} />
+
           <Route path="/seller-dashboard" element={<SellerDashboard />} />
           <Route path="/buyer-dashboard" element={<BuyerDashboardPage />} />
           <Route path="/admin-dashboard" element={<AdminPageM />} />
