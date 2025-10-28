@@ -13,6 +13,7 @@ import { PropertyCardTest } from "./components/test/PropertyCardTest";
 import { AssetDetailsPage } from "./components/AssetDetailPage";
 import { Home } from "./pages/Home";
 import { AdminDashboard } from "./components/AdminMainPage";
+import { AdminAssetDetailsPage } from "./pages/AdminAssetDetailsPage";
 
 function App() {
   return (
@@ -30,6 +31,8 @@ function App() {
           <Route path="/seller-dashboard" element={<SellerDashboard />} />
           <Route path="/buyer-dashboard" element={<BuyerDashboardPage />} />
           <Route path="/admin-dashboard" element={<AdminDashboard />} />
+          <Route path="/admin/asset/:propertyId" element={<AdminAssetDetailsPage />} /> {/* Admin view */}
+
 
           <Route path="/market-place" element={<MarketplacePage />} />
           <Route path="/asset/:propertyId" element={<PropertyDetailsPage />} />

@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Shield, Users, CheckCircle, DollarSign, UserPlus, UserMinus, Key, RefreshCw, AlertCircle, Wallet, Settings, ExternalLink, Home } from 'lucide-react';
+import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { MOCK_USDC, MOCK_USDC_ADDRESS, REAL_ESTATE_DAPP, REAL_ESTATE_DAPP_ADDRESS } from '@/config/contract.config';
+import { useNavigate } from 'react-router-dom';
 
 export const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('assets');
   const [notification, setNotification] = useState(null);
-  const [assets, setAssets] = useState(mockAssets);
   const [filterStatus, setFilterStatus] = useState('all');
-  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate()
 
   // Form states
   const [tokenIdToVerify, setTokenIdToVerify] = useState('');
@@ -21,13 +23,61 @@ export const AdminDashboard = () => {
   const [newOwner, setNewOwner] = useState('');
   const [adminCheckResult, setAdminCheckResult] = useState(null);
 
-  // Mock wallet connection
-  const isConnected = true;
-  const address = '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb';
-  const isOwner = true;
-  const isAdmin = true;
-  const ownerAddress = '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb';
-  const contractAddress = '0xd1a4710C80A22eBfcc531c888ecFc9f402529f6F';
+  // Wagmi hooks for wallet connection
+  const { address, isConnected } = useAccount();
+  const { writeContract, data: hash, isPending } = useWriteContract();
+  const { isLoading: isConfirming } = useWaitForTransactionReceipt({ hash });
+
+  // Read contract data - fetching all assets from blockchain
+  const { data: allAssets, refetch: refetchAssets } = useReadContract({
+    address: REAL_ESTATE_DAPP_ADDRESS,
+    abi: REAL_ESTATE_DAPP,
+    functionName: 'fetchAllAssetsWithDisplayInfo',
+  });
+
+  // Get contract owner address
+  const { data: ownerAddress } = useReadContract({
+    address: REAL_ESTATE_DAPP_ADDRESS,
+    abi: REAL_ESTATE_DAPP,
+    functionName: 'owner',
+  });
+
+  // Check if current user is admin
+  const { data: isAdmin } = useReadContract({
+    address: REAL_ESTATE_DAPP_ADDRESS,
+    abi: REAL_ESTATE_DAPP,
+    functionName: 'isAdmin',
+    args: address ? [address] : undefined,
+  });
+
+  // Check admin status for a specific address
+  const { data: adminCheckData } = useReadContract({
+    address: REAL_ESTATE_DAPP_ADDRESS,
+    abi: REAL_ESTATE_DAPP,
+    functionName: 'isAdmin',
+    args: adminToCheck && adminToCheck.startsWith('0x') && adminToCheck.length === 42 ? [adminToCheck] : undefined,
+  });
+
+  // Derived state
+  const isOwner = address && ownerAddress && address.toLowerCase() === ownerAddress.toLowerCase();
+  const assets = allAssets || [];
+  const loading = isPending || isConfirming;
+
+  // Update admin check result when data changes
+  useEffect(() => {
+    if (adminCheckData !== undefined) {
+      setAdminCheckResult(adminCheckData);
+    } else {
+      setAdminCheckResult(null);
+    }
+  }, [adminCheckData]);
+
+  // Refetch assets after transaction completes
+  useEffect(() => {
+    if (!isPending && !isConfirming && hash) {
+      refetchAssets();
+    }
+  }, [isPending, isConfirming, hash, refetchAssets]);
 
   const showNotification = (message, type = 'success') => {
     setNotification({ message, type });
@@ -56,131 +106,170 @@ export const AdminDashboard = () => {
 
   const handleAssetClick = (tokenId) => {
     showNotification(`Navigating to asset #${tokenId}...`, 'success');
-    // In real app: navigate(`/asset/${tokenId}`);
+    navigate(`/asset/${tokenId}`);
   };
 
+  // Verify an asset on the blockchain
   const verifyAsset = async () => {
     if (!tokenIdToVerify) {
       showNotification('Please enter a token ID', 'error');
       return;
     }
-    setLoading(true);
-    setTimeout(() => {
-      const updatedAssets = assets.map(asset => 
-        asset.tokenId === parseInt(tokenIdToVerify) 
-          ? { ...asset, verified: true } 
-          : asset
-      );
-      setAssets(updatedAssets);
-      showNotification(`Asset #${tokenIdToVerify} verified successfully!`, 'success');
+    try {
+      await writeContract({
+        address: REAL_ESTATE_DAPP_ADDRESS,
+        abi: REAL_ESTATE_DAPP,
+        functionName: 'verifyAsset',
+        args: [BigInt(tokenIdToVerify)],
+      });
+      showNotification(`Asset #${tokenIdToVerify} verification submitted!`, 'success');
       setTokenIdToVerify('');
-      setLoading(false);
-    }, 1500);
+    } catch (error) {
+      showNotification(error.message || 'Transaction failed', 'error');
+    }
   };
 
+  // Set buyer withdrawal permission for a specific token
   const setBuyerWithdrawPermission = async () => {
     if (!tokenIdForWithdraw) {
       showNotification('Please enter a token ID', 'error');
       return;
     }
-    setLoading(true);
-    setTimeout(() => {
+    try {
+      await writeContract({
+        address: REAL_ESTATE_DAPP_ADDRESS,
+        abi: REAL_ESTATE_DAPP,
+        functionName: 'setBuyerCanWithdraw',
+        args: [BigInt(tokenIdForWithdraw), canWithdraw],
+      });
       showNotification(`Withdrawal permission updated for token #${tokenIdForWithdraw}`, 'success');
       setTokenIdForWithdraw('');
-      setLoading(false);
-    }, 1500);
+    } catch (error) {
+      showNotification(error.message || 'Transaction failed', 'error');
+    }
   };
 
+  // Withdraw USDC from the contract to a recipient
   const withdrawUSDC = async () => {
     if (!withdrawRecipient || !withdrawAmount) {
       showNotification('Please enter recipient and amount', 'error');
       return;
     }
-    setLoading(true);
-    setTimeout(() => {
-      showNotification(`${withdrawAmount} USDC withdrawn to ${withdrawRecipient.slice(0, 6)}...`, 'success');
+    try {
+      // Convert decimal USDC to 6-decimal format (e.g., 100.50 USDC -> 100500000)
+      const amount = BigInt(Math.floor(parseFloat(withdrawAmount) * 1000000));
+      await writeContract({
+        address: REAL_ESTATE_DAPP_ADDRESS,
+        abi: REAL_ESTATE_DAPP,
+        functionName: 'withdrawUSDC',
+        args: [withdrawRecipient, amount],
+      });
+      showNotification(`${withdrawAmount} USDC withdrawal submitted!`, 'success');
       setWithdrawRecipient('');
       setWithdrawAmount('');
-      setLoading(false);
-    }, 1500);
+    } catch (error) {
+      showNotification(error.message || 'Transaction failed', 'error');
+    }
   };
 
+  // Mint USDC directly to the contract
   const mintUSDC = async () => {
     if (!usdcMintAmount) {
       showNotification('Please enter an amount to mint', 'error');
       return;
     }
-    setLoading(true);
-    setTimeout(() => {
-      showNotification(`${usdcMintAmount} USDC minted successfully!`, 'success');
+    try {
+      // Convert decimal USDC to 6-decimal format
+      const amount = BigInt(Math.floor(parseFloat(usdcMintAmount) * 1000000));
+      await writeContract({
+        address: MOCK_USDC_ADDRESS,
+        abi: MOCK_USDC,
+        functionName: 'mint',
+        args: [REAL_ESTATE_DAPP_ADDRESS, amount],
+      });
+      showNotification(`${usdcMintAmount} USDC minting submitted!`, 'success');
       setUsdcMintAmount('');
-      setLoading(false);
-    }, 1500);
+    } catch (error) {
+      showNotification(error.message || 'Transaction failed', 'error');
+    }
   };
 
+  // Add a new admin to the contract
   const addAdmin = async () => {
     if (!adminToAdd) {
       showNotification('Please enter an admin address', 'error');
       return;
     }
-    setLoading(true);
-    setTimeout(() => {
-      showNotification(`Admin added: ${adminToAdd.slice(0, 10)}...`, 'success');
+    try {
+      await writeContract({
+        address: REAL_ESTATE_DAPP_ADDRESS,
+        abi: REAL_ESTATE_DAPP,
+        functionName: 'addAdmin',
+        args: [adminToAdd],
+      });
+      showNotification(`Admin addition submitted: ${adminToAdd.slice(0, 10)}...`, 'success');
       setAdminToAdd('');
-      setLoading(false);
-    }, 1500);
+    } catch (error) {
+      showNotification(error.message || 'Transaction failed', 'error');
+    }
   };
 
+  // Remove an admin from the contract
   const removeAdmin = async () => {
     if (!adminToRemove) {
       showNotification('Please enter an admin address', 'error');
       return;
     }
-    setLoading(true);
-    setTimeout(() => {
-      showNotification(`Admin removed: ${adminToRemove.slice(0, 10)}...`, 'success');
+    try {
+      await writeContract({
+        address: REAL_ESTATE_DAPP_ADDRESS,
+        abi: REAL_ESTATE_DAPP,
+        functionName: 'removeAdmin',
+        args: [adminToRemove],
+      });
+      showNotification(`Admin removal submitted: ${adminToRemove.slice(0, 10)}...`, 'success');
       setAdminToRemove('');
-      setLoading(false);
-    }, 1500);
+    } catch (error) {
+      showNotification(error.message || 'Transaction failed', 'error');
+    }
   };
 
+  // Transfer contract ownership to a new address
   const transferOwnership = async () => {
     if (!newOwner) {
       showNotification('Please enter a new owner address', 'error');
       return;
     }
-    setLoading(true);
-    setTimeout(() => {
-      showNotification(`Ownership transferred to ${newOwner.slice(0, 10)}...`, 'success');
+    try {
+      await writeContract({
+        address: REAL_ESTATE_DAPP_ADDRESS,
+        abi: REAL_ESTATE_DAPP,
+        functionName: 'transferOwnership',
+        args: [newOwner],
+      });
+      showNotification(`Ownership transfer submitted to ${newOwner.slice(0, 10)}...`, 'success');
       setNewOwner('');
-      setLoading(false);
-    }, 1500);
+    } catch (error) {
+      showNotification(error.message || 'Transaction failed', 'error');
+    }
   };
 
+  // Renounce contract ownership (permanent action)
   const renounceOwnership = async () => {
     if (!window.confirm('Are you sure you want to renounce ownership? This action cannot be undone!')) {
       return;
     }
-    setLoading(true);
-    setTimeout(() => {
-      showNotification('Ownership renounced', 'success');
-      setLoading(false);
-    }, 1500);
-  };
-
-  const checkAdmin = () => {
-    if (!adminToCheck) return;
-    const isAdmin = Math.random() > 0.5;
-    setAdminCheckResult(isAdmin);
-  };
-
-  useEffect(() => {
-    if (adminToCheck && adminToCheck.startsWith('0x') && adminToCheck.length === 42) {
-      checkAdmin();
-    } else {
-      setAdminCheckResult(null);
+    try {
+      await writeContract({
+        address: REAL_ESTATE_DAPP_ADDRESS,
+        abi: REAL_ESTATE_DAPP,
+        functionName: 'renounceOwnership',
+      });
+      showNotification('Ownership renunciation submitted', 'success');
+    } catch (error) {
+      showNotification(error.message || 'Transaction failed', 'error');
     }
-  }, [adminToCheck]);
+  };
 
   const tabs = [
     { id: 'assets', label: 'Asset Management', icon: Home, adminOnly: true },
@@ -247,7 +336,7 @@ export const AdminDashboard = () => {
               <div>
                 <p className="text-sm text-[#6D6041] mb-1">Role</p>
                 <p className="text-2xl font-bold text-[#E1E2E2]">
-                  {isOwner ? 'Owner' : 'Admin'}
+                  {isOwner ? 'Owner' : isAdmin ? 'Admin' : 'User'}
                 </p>
               </div>
               <Shield className="w-12 h-12 text-[#CAAB5B] opacity-20" />
@@ -329,7 +418,10 @@ export const AdminDashboard = () => {
                     <p className="text-[#6D6041]">Review and manage all real estate assets</p>
                   </div>
                   <button
-                    onClick={() => showNotification('Assets refreshed', 'success')}
+                    onClick={() => {
+                      refetchAssets();
+                      showNotification('Assets refreshed', 'success');
+                    }}
                     className="flex items-center gap-2 px-4 py-2 bg-[#CAAB5B]/10 text-[#CAAB5B] rounded-lg hover:bg-[#CAAB5B]/20 transition-colors"
                   >
                     <RefreshCw className="w-4 h-4" />
@@ -362,11 +454,10 @@ export const AdminDashboard = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {filteredAssets.map((asset) => (
                     <div
-                      key={asset.tokenId}
-                      onClick={() => handleAssetClick(asset.tokenId)}
+                      key={asset.tokenId.toString()}
+                      onClick={() => handleAssetClick(asset.tokenId.toString())}
                       className="bg-[#111216] border border-[#2C2C2C] rounded-xl overflow-hidden hover:border-[#CAAB5B] transition-all cursor-pointer group shadow-[0_4px_15px_rgba(0,0,0,0.3)] hover:shadow-lg"
                     >
-                      {/* Asset Image/Placeholder */}
                       <div className="h-48 bg-gradient-to-br from-[#CAAB5B]/10 to-[#CAAB5B]/5 flex items-center justify-center relative">
                         <Home className="w-16 h-16 text-[#CAAB5B]/30" />
                         <div className="absolute top-3 right-3">
@@ -391,12 +482,11 @@ export const AdminDashboard = () => {
                         )}
                       </div>
 
-                      {/* Asset Details */}
                       <div className="p-4">
                         <div className="flex items-start justify-between mb-3">
                           <div>
                             <h3 className="text-lg font-bold text-[#E1E2E2] mb-1">
-                              Property #{asset.tokenId}
+                              Property #{asset.tokenId.toString()}
                             </h3>
                             <p className="text-2xl font-bold text-[#CAAB5B]">
                               ${formatPrice(asset.price)} USDC
@@ -405,7 +495,6 @@ export const AdminDashboard = () => {
                           <ExternalLink className="w-5 h-5 text-[#CAAB5B] opacity-0 group-hover:opacity-100 transition-opacity" />
                         </div>
 
-                        {/* Seller Info */}
                         <div className="mb-3 pb-3 border-b border-[#2C2C2C]">
                           <p className="text-xs text-[#6D6041] mb-1">Seller</p>
                           <p className="text-sm font-mono text-[#E1E2E2]">
@@ -413,7 +502,6 @@ export const AdminDashboard = () => {
                           </p>
                         </div>
 
-                        {/* Status Grid */}
                         <div className="grid grid-cols-2 gap-2 mb-3">
                           <div className="bg-[#121317]/50 rounded-lg p-2">
                             <p className="text-xs text-[#6D6041] mb-0.5">Payment</p>
@@ -429,7 +517,6 @@ export const AdminDashboard = () => {
                           </div>
                         </div>
 
-                        {/* Fractionalization Info */}
                         {asset.isFractionalized && (
                           <div className="bg-[#CAAB5B]/10 border border-[#CAAB5B]/30 rounded-lg p-3 mb-3">
                             <p className="text-xs font-semibold text-[#CAAB5B] mb-2">Fractionalized Asset</p>
@@ -437,13 +524,13 @@ export const AdminDashboard = () => {
                               <div className="flex justify-between text-xs">
                                 <span className="text-[#6D6041]">Total Tokens:</span>
                                 <span className="text-[#E1E2E2] font-medium">
-                                  {asset.totalFractionalTokens}
+                                  {asset.totalFractionalTokens.toString()}
                                 </span>
                               </div>
                               <div className="flex justify-between text-xs">
                                 <span className="text-[#6D6041]">Remaining:</span>
                                 <span className="text-[#E1E2E2] font-medium">
-                                  {asset.remainingFractionalTokens}
+                                  {asset.remainingFractionalTokens.toString()}
                                 </span>
                               </div>
                               <div className="flex justify-between text-xs">
@@ -456,7 +543,6 @@ export const AdminDashboard = () => {
                           </div>
                         )}
 
-                        {/* Current Buyer */}
                         {asset.currentBuyer && asset.currentBuyer !== '0x0000000000000000000000000000000000000000' && (
                           <div className="mb-3">
                             <p className="text-xs text-[#6D6041] mb-1">Current Buyer</p>
@@ -466,11 +552,10 @@ export const AdminDashboard = () => {
                           </div>
                         )}
 
-                        {/* Quick Action Button */}
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleAssetClick(asset.tokenId);
+                            handleAssetClick(asset.tokenId.toString());
                           }}
                           className="w-full mt-3 py-2 bg-[#CAAB5B]/10 text-[#CAAB5B] rounded-lg hover:bg-[#CAAB5B] hover:text-[#121317] transition-colors font-medium text-sm"
                         >
@@ -516,7 +601,7 @@ export const AdminDashboard = () => {
             {/* Withdraw Settings Tab */}
             {activeTab === 'withdraw' && (
               <div className="max-w-2xl">
-                <h2 className="text-xl font-semibold text-[#E1E2E2] mb-2">Buyer Withdrawal Settings</h2>
+                <h2 className="text-xl font-semibold text-[#E12E2] mb-2">Buyer Withdrawal Settings</h2>
                 <p className="text-[#6D6041] mb-6">Control whether buyers can withdraw funds for specific tokens</p>
                 
                 <div className="space-y-4">
@@ -583,7 +668,7 @@ export const AdminDashboard = () => {
                       <div>
                         <p className="text-sm font-medium text-[#E1E2E2]">Contract Address</p>
                         <p className="text-xs font-mono text-[#6D6041] mt-1 break-all">
-                          {contractAddress}
+                          {REAL_ESTATE_DAPP_ADDRESS}
                         </p>
                       </div>
                     </div>
@@ -844,7 +929,7 @@ export const AdminDashboard = () => {
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium text-[#6D6041]">Contract Address</span>
                       <span className="text-sm font-mono text-[#E1E2E2]">
-                        {contractAddress.slice(0, 10)}...{contractAddress.slice(-8)}
+                        {REAL_ESTATE_DAPP_ADDRESS.slice(0, 10)}...{REAL_ESTATE_DAPP_ADDRESS.slice(-8)}
                       </span>
                     </div>
                   </div>
