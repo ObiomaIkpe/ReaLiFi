@@ -1,4 +1,3 @@
-// src/pages/AdminAssetDetailsPage.jsx
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
@@ -15,11 +14,17 @@ export const AdminAssetDetailsPage = () => {
   const { address, isConnected } = useAccount();
   const [notification, setNotification] = useState(null);
   const [activeAction, setActiveAction] = useState(null);
+  const [activeTab, setActiveTab] = useState('overview');
+  const [selectedImage, setSelectedImage] = useState(0);
 
   // Form states
   const [numTokensToFractionalize, setNumTokensToFractionalize] = useState('');
   const [dividendAmount, setDividendAmount] = useState('');
   const [withdrawPermission, setWithdrawPermission] = useState(true);
+
+  // Metadata state
+  const [metadata, setMetadata] = useState(null);
+  const [metadataLoading, setMetadataLoading] = useState(false);
 
   const { writeContract, data: hash, isPending } = useWriteContract();
   const { isLoading: isConfirming } = useWaitForTransactionReceipt({ hash });
@@ -57,21 +62,25 @@ export const AdminAssetDetailsPage = () => {
     args: assetData?.isFractionalized && propertyId ? [BigInt(propertyId)] : undefined,
   });
 
-  // Fetch share listings
-  const { data: shareListings, refetch: refetchListings } = useReadContract({
-    address: REAL_ESTATE_DAPP_ADDRESS,
-    abi: REAL_ESTATE_DAPP,
-    functionName: 'getAssetShareListings',
-    args: assetData?.isFractionalized && propertyId ? [BigInt(propertyId)] : undefined,
-  });
-
-  // Fetch accumulated payments
-  const { data: accumulatedPayments } = useReadContract({
-    address: REAL_ESTATE_DAPP_ADDRESS,
-    abi: REAL_ESTATE_DAPP,
-    functionName: 'getFractionalPayments',
-    args: assetData?.isFractionalized && propertyId ? [BigInt(propertyId)] : undefined,
-  });
+  // Fetch metadata from IPFS
+  useEffect(() => {
+    if (!assetData?.tokenURI) return;
+    
+    setMetadataLoading(true);
+    fetch(assetData.tokenURI)
+      .then(res => {
+        if (!res.ok) throw new Error('Failed to fetch metadata');
+        return res.json();
+      })
+      .then(data => {
+        setMetadata(data);
+        setMetadataLoading(false);
+      })
+      .catch(err => {
+        console.error('Error fetching metadata:', err);
+        setMetadataLoading(false);
+      });
+  }, [assetData?.tokenURI]);
 
   const loading = isPending || isConfirming || loadingAsset;
 
@@ -87,9 +96,8 @@ export const AdminAssetDetailsPage = () => {
     if (!isPending && !isConfirming && hash) {
       refetchAsset();
       refetchBuyers();
-      refetchListings();
     }
-  }, [isPending, isConfirming, hash, refetchAsset, refetchBuyers, refetchListings]);
+  }, [isPending, isConfirming, hash, refetchAsset, refetchBuyers]);
 
   const showNotification = (message, type = 'success') => {
     setNotification({ message, type });
@@ -208,7 +216,16 @@ export const AdminAssetDetailsPage = () => {
     }
   };
 
-  if (loadingAsset) {
+  // Calculate financial metrics
+  const netMonthlyIncome = metadata?.financialDetails 
+    ? parseFloat(metadata.financialDetails.monthlyRevenue || 0) - parseFloat(metadata.financialDetails.monthlyExpenses || 0)
+    : 0;
+
+  const annualROI = metadata?.financialDetails?.purchasePrice
+    ? ((netMonthlyIncome * 12) / parseFloat(metadata.financialDetails.purchasePrice)) * 100
+    : 0;
+
+  if (loadingAsset || metadataLoading) {
     return (
       <div className="min-h-screen bg-[#121317] flex items-center justify-center">
         <div className="text-center">
@@ -266,7 +283,9 @@ export const AdminAssetDetailsPage = () => {
                 <Home className="w-8 h-8 text-[#CAAB5B]" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-[#E1E2E2]">Property #{propertyId}</h1>
+                <h1 className="text-3xl font-bold text-[#E1E2E2]">
+                  {metadata?.propertyDetails?.title || `Property #${propertyId}`}
+                </h1>
                 <p className="text-[#6D6041]">Admin Asset Management</p>
               </div>
             </div>
@@ -288,7 +307,6 @@ export const AdminAssetDetailsPage = () => {
                 onClick={() => {
                   refetchAsset();
                   refetchBuyers();
-                  refetchListings();
                   showNotification('Data refreshed', 'success');
                 }}
                 className="p-2 bg-[#CAAB5B]/10 text-[#CAAB5B] rounded-lg hover:bg-[#CAAB5B]/20 transition-colors"
@@ -302,30 +320,95 @@ export const AdminAssetDetailsPage = () => {
 
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left Column - Asset Info */}
+          {/* Left Column - Property Details */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Asset Overview */}
+            {/* Image Gallery */}
             <div className="bg-[#111216] border border-[#2C2C2C] rounded-xl p-6">
-              <h2 className="text-xl font-bold text-[#E1E2E2] mb-6 flex items-center gap-2">
-                <Eye className="w-5 h-5 text-[#CAAB5B]" />
-                Asset Overview
-              </h2>
+              <div className="relative w-full h-96 bg-[#121317] rounded-lg overflow-hidden mb-4">
+                {metadata?.media?.images && metadata.media.images.length > 0 ? (
+                  <img 
+                    src={metadata.media.images[selectedImage]?.url}
+                    alt={`Property image ${selectedImage + 1}`}
+                    className="w-full h-full object-cover cursor-pointer"
+                    onClick={() => window.open(metadata.media.images[selectedImage]?.url, '_blank')}
+                  />
+                ) : (
+                  <div className="w-full h-full flex flex-col items-center justify-center text-[#6D6041] gap-3">
+                    <Home className="w-16 h-16" />
+                    <div className="text-sm">No images available</div>
+                  </div>
+                )}
 
-              <div className="grid grid-cols-2 gap-4 mb-6">
+                {assetData.verified && (
+                  <div className="absolute top-4 right-4 bg-[#4CAF50] text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-lg">
+                    ✓ Verified
+                  </div>
+                )}
+
+                {assetData.isFractionalized && (
+                  <div className="absolute top-4 left-4 bg-[#CAAB5B] text-[#121317] px-3 py-1.5 rounded-lg text-xs font-bold shadow-lg">
+                    🔹 Fractional
+                  </div>
+                )}
+
+                {metadata?.media?.images && metadata.media.images.length > 1 && (
+                  <div className="absolute bottom-4 right-4 bg-black/70 text-white px-3 py-1.5 rounded-lg text-xs">
+                    {selectedImage + 1} / {metadata.media.images.length}
+                  </div>
+                )}
+              </div>
+
+              {metadata?.media?.images && metadata.media.images.length > 1 && (
+                <div className="flex gap-2 overflow-x-auto pb-2">
+                  {metadata.media.images.map((img, i) => (
+                    <img
+                      key={i}
+                      src={img.url}
+                      alt={`Thumbnail ${i + 1}`}
+                      onClick={() => setSelectedImage(i)}
+                      className={`w-20 h-20 object-cover rounded-lg cursor-pointer border-2 transition-all ${
+                        selectedImage === i ? 'border-[#CAAB5B] opacity-100' : 'border-[#2C2C2C] opacity-60 hover:opacity-80'
+                      }`}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Property Info Card */}
+            <div className="bg-[#111216] border border-[#2C2C2C] rounded-xl p-6">
+              <div className="flex items-center justify-between mb-4 pb-4 border-b border-[#2C2C2C]">
+                <h2 className="text-xl font-bold text-[#E1E2E2]">Property Information</h2>
+                <span className="bg-[#2C2C2C] text-[#6D6041] px-3 py-1 rounded-lg text-xs">
+                  Token #{propertyId}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 mb-4">
                 <div className="bg-[#121317] rounded-lg p-4">
                   <p className="text-xs text-[#6D6041] mb-1">Price</p>
                   <p className="text-2xl font-bold text-[#CAAB5B]">${formatPrice(assetData.price)}</p>
                 </div>
                 <div className="bg-[#121317] rounded-lg p-4">
-                  <p className="text-xs text-[#6D6041] mb-1">Token ID</p>
-                  <p className="text-2xl font-bold text-[#E1E2E2]">#{assetData.tokenId.toString()}</p>
+                  <p className="text-xs text-[#6D6041] mb-1">Location</p>
+                  <p className="text-lg font-bold text-[#E1E2E2]">
+                    {metadata?.propertyDetails?.location || 'N/A'}
+                  </p>
                 </div>
               </div>
+
+              {metadata?.propertyDetails?.type && (
+                <div className="flex gap-2 mb-4">
+                  <span className="bg-[#2C2C2C] text-[#E1E2E2] px-3 py-1 rounded-lg text-sm">
+                    {metadata.propertyDetails.type}
+                  </span>
+                </div>
+              )}
 
               <div className="space-y-3">
                 <div className="flex justify-between py-2 border-b border-[#2C2C2C]">
                   <span className="text-[#6D6041]">Seller</span>
-                  <span className="font-mono text-[#E1E2E2]">
+                  <span className="font-mono text-[#E1E2E2] text-sm">
                     {assetData.seller.slice(0, 10)}...{assetData.seller.slice(-8)}
                   </span>
                 </div>
@@ -341,92 +424,79 @@ export const AdminAssetDetailsPage = () => {
                     {assetData.isPaidFor ? 'Paid' : 'Unpaid'}
                   </span>
                 </div>
-                <div className="flex justify-between py-2 border-b border-[#2C2C2C]">
-                  <span className="text-[#6D6041]">Canceled</span>
-                  <span className={`font-semibold ${assetData.isCanceled ? 'text-red-500' : 'text-[#CAAB5B]'}`}>
-                    {assetData.isCanceled ? 'Yes' : 'No'}
-                  </span>
-                </div>
-                {assetData.currentBuyer && assetData.currentBuyer !== '0x0000000000000000000000000000000000000000' && (
+                {metadata?.timestamp && (
                   <div className="flex justify-between py-2 border-b border-[#2C2C2C]">
-                    <span className="text-[#6D6041]">Current Buyer</span>
-                    <span className="font-mono text-[#E1E2E2]">
-                      {assetData.currentBuyer.slice(0, 10)}...{assetData.currentBuyer.slice(-8)}
+                    <span className="text-[#6D6041]">Listed on</span>
+                    <span className="text-[#E1E2E2] text-sm">
+                      {new Date(metadata.timestamp).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })}
                     </span>
                   </div>
                 )}
               </div>
             </div>
 
-            {/* Fractional Info */}
-            {assetData.isFractionalized && (
-              <>
-                <div className="bg-[#111216] border border-[#2C2C2C] rounded-xl p-6">
-                  <h2 className="text-xl font-bold text-[#E1E2E2] mb-6 flex items-center gap-2">
-                    <Split className="w-5 h-5 text-[#CAAB5B]" />
-                    Fractionalization Details
-                  </h2>
-
-                  <div className="grid grid-cols-3 gap-4 mb-6">
-                    <div className="bg-[#CAAB5B]/10 border border-[#CAAB5B]/30 rounded-lg p-4">
-                      <p className="text-xs text-[#CAAB5B] mb-1">Total Tokens</p>
-                      <p className="text-2xl font-bold text-[#E1E2E2]">{assetData.totalFractionalTokens.toString()}</p>
-                    </div>
-                    <div className="bg-[#CAAB5B]/10 border border-[#CAAB5B]/30 rounded-lg p-4">
-                      <p className="text-xs text-[#CAAB5B] mb-1">Remaining</p>
-                      <p className="text-2xl font-bold text-[#E1E2E2]">{assetData.remainingFractionalTokens.toString()}</p>
-                    </div>
-                    <div className="bg-[#CAAB5B]/10 border border-[#CAAB5B]/30 rounded-lg p-4">
-                      <p className="text-xs text-[#CAAB5B] mb-1">Price/Token</p>
-                      <p className="text-xl font-bold text-[#E1E2E2]">${formatPrice(assetData.pricePerFractionalToken)}</p>
-                    </div>
-                  </div>
-
-                  <div className="bg-[#121317] rounded-lg p-4">
-                    <p className="text-sm text-[#6D6041] mb-1">Accumulated Payments</p>
-                    <p className="text-2xl font-bold text-[#CAAB5B]">
-                      ${formatPrice(assetData.accumulatedFractionalPayments)} USDC
-                    </p>
-                  </div>
-                </div>
-
-                {/* Fractional Buyers */}
-                {fractionalBuyers && fractionalBuyers.length > 0 && (
-                  <div className="bg-[#111216] border border-[#2C2C2C] rounded-xl p-6">
-                    <h2 className="text-xl font-bold text-[#E1E2E2] mb-6 flex items-center gap-2">
-                      <Users className="w-5 h-5 text-[#CAAB5B]" />
-                      Shareholders ({fractionalBuyers.length})
-                    </h2>
-
-                    <div className="space-y-3">
-                      {fractionalBuyers.map((buyer, index) => (
-                        <div key={index} className="bg-[#121317] rounded-lg p-4 flex items-center justify-between">
-                          <div>
-                            <p className="font-mono text-sm text-[#E1E2E2] mb-1">
-                              {buyer.buyer.slice(0, 10)}...{buyer.buyer.slice(-8)}
-                            </p>
-                            <p className="text-xs text-[#6D6041]">
-                              {buyer.numTokens.toString()} tokens • {(Number(buyer.percentage) / 100).toFixed(2)}% ownership
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-sm font-semibold text-[#CAAB5B]">
-                              ${formatPrice(BigInt(buyer.numTokens) * assetData.pricePerFractionalToken)}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+            {/* Tabbed Content */}
+            <div className="bg-[#111216] border border-[#2C2C2C] rounded-xl overflow-hidden">
+              <div className="flex border-b border-[#2C2C2C] overflow-x-auto">
+                <TabButton 
+                  label="Overview" 
+                  isActive={activeTab === 'overview'}
+                  onClick={() => setActiveTab('overview')}
+                />
+                <TabButton 
+                  label="Financials" 
+                  isActive={activeTab === 'financials'}
+                  onClick={() => setActiveTab('financials')}
+                />
+                <TabButton 
+                  label="Documents" 
+                  isActive={activeTab === 'documents'}
+                  onClick={() => setActiveTab('documents')}
+                />
+                {assetData.isFractionalized && (
+                  <TabButton 
+                    label="Investors" 
+                    isActive={activeTab === 'investors'}
+                    onClick={() => setActiveTab('investors')}
+                    badge={fractionalBuyers?.length}
+                  />
                 )}
-              </>
-            )}
+              </div>
+
+              <div className="p-6">
+                {activeTab === 'overview' && (
+                  <OverviewTab metadata={metadata} />
+                )}
+                {activeTab === 'financials' && (
+                  <FinancialsTab 
+                    metadata={metadata}
+                    netMonthlyIncome={netMonthlyIncome}
+                    annualROI={annualROI}
+                    formatPrice={formatPrice}
+                  />
+                )}
+                {activeTab === 'documents' && (
+                  <DocumentsTab metadata={metadata} />
+                )}
+                {activeTab === 'investors' && assetData.isFractionalized && (
+                  <InvestorsTab 
+                    fractionalBuyers={fractionalBuyers}
+                    assetData={assetData}
+                    formatPrice={formatPrice}
+                  />
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Right Column - Admin Actions */}
           <div className="space-y-6">
             {/* Quick Actions */}
-            <div className="bg-[#111216] border border-[#2C2C2C] rounded-xl p-6">
+            <div className="bg-[#111216] border border-[#2C2C2C] rounded-xl p-6 sticky top-6">
               <h2 className="text-xl font-bold text-[#E1E2E2] mb-6 flex items-center gap-2">
                 <Settings className="w-5 h-5 text-[#CAAB5B]" />
                 Admin Actions
@@ -676,3 +746,295 @@ export const AdminAssetDetailsPage = () => {
     </div>
   );
 };
+
+// Tab Button Component
+function TabButton({ label, isActive, onClick, badge }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex-1 min-w-fit px-6 py-4 text-sm font-bold border-b-2 transition-all relative ${
+        isActive
+          ? 'bg-[#121317] border-[#CAAB5B] text-[#CAAB5B]'
+          : 'bg-transparent text-[#6D6041] border-transparent hover:text-[#CAAB5B]/70'
+      }`}
+    >
+      {label}
+      {badge !== undefined && badge > 0 && (
+        <span className="absolute top-2 right-2 bg-[#CAAB5B] text-[#121317] rounded-full min-w-[20px] h-5 text-xs flex items-center justify-center font-bold px-1.5">
+          {badge}
+        </span>
+      )}
+    </button>
+  );
+}
+
+// Overview Tab Component
+function OverviewTab({ metadata }) {
+  return (
+    <div>
+      <h3 className="text-[#CAAB5B] text-lg font-bold mb-4">Property Description</h3>
+      <p className="text-[#E1E2E2] leading-relaxed mb-6">
+        {metadata?.propertyDetails?.description || 'No description available'}
+      </p>
+
+      {metadata?.ownerInformation && (
+        <>
+          <h3 className="text-[#CAAB5B] text-lg font-bold mb-4 mt-8">Owner Information</h3>
+          <div className="bg-[#121317] border border-[#2C2C2C] rounded-lg p-4">
+            <div className="grid grid-cols-2 gap-4 mb-3">
+              {metadata.ownerInformation.fullName && (
+                <div>
+                  <div className="text-xs text-[#6D6041] mb-1">Full Name</div>
+                  <div className="text-sm text-[#E1E2E2]">{metadata.ownerInformation.fullName}</div>
+                </div>
+              )}
+              {metadata.ownerInformation.email && (
+                <div>
+                  <div className="text-xs text-[#6D6041] mb-1">Email</div>
+                  <div className="text-sm text-[#E1E2E2]">{metadata.ownerInformation.email}</div>
+                </div>
+              )}
+              {metadata.ownerInformation.phone && (
+                <div>
+                  <div className="text-xs text-[#6D6041] mb-1">Phone</div>
+                  <div className="text-sm text-[#E1E2E2]">{metadata.ownerInformation.phone}</div>
+                </div>
+              )}
+            </div>
+            <div className="mt-3 p-3 bg-[#ff9800]/10 border border-[#ff9800] rounded-lg">
+              <p className="text-xs text-[#ff9800]">
+                ℹ️ Contact information is provided by the seller. Verify independently before transacting.
+              </p>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// Financials Tab Component
+function FinancialsTab({ metadata, netMonthlyIncome, annualROI, formatPrice }) {
+  const financials = metadata?.financialDetails;
+
+  if (!financials) {
+    return (
+      <div className="text-center py-10 text-[#6D6041]">
+        <DollarSign className="w-12 h-12 mx-auto mb-3 opacity-50" />
+        <p>No financial information available</p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <h3 className="text-[#CAAB5B] text-lg font-bold mb-4">Financial Details</h3>
+
+      <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className="bg-[#121317] border border-[#2C2C2C] rounded-lg p-4">
+          <div className="text-xs text-[#6D6041] mb-1">Purchase Price</div>
+          <div className="text-xl font-bold text-[#E1E2E2]">
+            ${parseFloat(financials.purchasePrice || 0).toLocaleString()}
+          </div>
+        </div>
+        <div className="bg-[#121317] border border-[#2C2C2C] rounded-lg p-4">
+          <div className="text-xs text-[#6D6041] mb-1">Tokenization Value</div>
+          <div className="text-xl font-bold text-[#E1E2E2]">
+            ${parseFloat(financials.tokenizationValue || 0).toLocaleString()}
+          </div>
+        </div>
+        <div className="bg-[#121317] border border-[#2C2C2C] rounded-lg p-4">
+          <div className="text-xs text-[#6D6041] mb-1">Potential Gain</div>
+          <div className="text-xl font-bold text-[#4CAF50]">
+            {(((parseFloat(financials.tokenizationValue) - parseFloat(financials.purchasePrice)) / parseFloat(financials.purchasePrice)) * 100).toFixed(1)}%
+          </div>
+        </div>
+      </div>
+
+      <h3 className="text-[#CAAB5B] text-lg font-bold mb-4 mt-8">Monthly Cash Flow</h3>
+      <div className="grid grid-cols-2 gap-4 mb-6">
+        <div className="bg-[#121317] border border-[#2C2C2C] rounded-lg p-4">
+          <div className="text-xs text-[#6D6041] mb-1">Monthly Revenue</div>
+          <div className="text-xl font-bold text-[#4CAF50]">
+            ${parseFloat(financials.monthlyRevenue || 0).toLocaleString()}
+          </div>
+        </div>
+        <div className="bg-[#121317] border border-[#2C2C2C] rounded-lg p-4">
+          <div className="text-xs text-[#6D6041] mb-1">Monthly Expenses</div>
+          <div className="text-xl font-bold text-[#f44336]">
+            ${parseFloat(financials.monthlyExpenses || 0).toLocaleString()}
+          </div>
+        </div>
+        <div className="bg-[#121317] border border-[#2C2C2C] rounded-lg p-4">
+          <div className="text-xs text-[#6D6041] mb-1">Net Monthly Income</div>
+          <div className={`text-xl font-bold ${netMonthlyIncome >= 0 ? 'text-[#4CAF50]' : 'text-[#f44336]'}`}>
+            ${netMonthlyIncome.toLocaleString()}
+          </div>
+        </div>
+        <div className="bg-[#121317] border border-[#2C2C2C] rounded-lg p-4">
+          <div className="text-xs text-[#6D6041] mb-1">Annual ROI</div>
+          <div className={`text-xl font-bold ${annualROI >= 0 ? 'text-[#4CAF50]' : 'text-[#f44336]'}`}>
+            {annualROI.toFixed(2)}%
+          </div>
+        </div>
+      </div>
+
+      {netMonthlyIncome < 0 && (
+        <div className="bg-[#f44336]/10 border border-[#f44336] rounded-lg p-4">
+          <div className="flex gap-3">
+            <AlertCircle className="w-5 h-5 text-[#f44336] flex-shrink-0" />
+            <div>
+              <div className="text-sm font-bold text-[#f44336] mb-1">⚠️ Negative Cash Flow</div>
+              <div className="text-sm text-[#E1E2E2]">
+                This property currently operates at a monthly loss of ${Math.abs(netMonthlyIncome).toLocaleString()}.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Documents Tab Component
+function DocumentsTab({ metadata }) {
+  const documents = metadata?.media?.documents;
+
+  if (!documents || documents.length === 0) {
+    return (
+      <div className="text-center py-10 text-[#6D6041]">
+        <div className="text-5xl mb-3">📄</div>
+        <p>No documents available</p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <h3 className="text-[#CAAB5B] text-lg font-bold mb-4">Legal Documents</h3>
+      
+      <div className="space-y-3">
+        {documents.map((doc, i) => (
+          <div
+            key={i}
+            className="bg-[#121317] border border-[#2C2C2C] rounded-lg p-4 flex justify-between items-center"
+          >
+            <div className="flex items-center gap-3">
+              <div className="text-2xl">📄</div>
+              <div>
+                <div className="text-sm font-bold text-[#E1E2E2] mb-1">{doc.name}</div>
+                <div className="text-xs text-[#6D6041]">Stored on IPFS</div>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => window.open(doc.url, '_blank')}
+                className="px-4 py-2 bg-[#CAAB5B] text-[#121317] rounded-lg text-xs font-bold hover:bg-[#CAAB5B]/90 transition-colors"
+              >
+                View
+              </button>
+              <button
+                onClick={() => {
+                  const link = document.createElement('a');
+                  link.href = doc.url;
+                  link.download = doc.name;
+                  link.click();
+                }}
+                className="px-4 py-2 bg-[#2C2C2C] text-[#E1E2E2] rounded-lg text-xs font-bold hover:bg-[#2C2C2C]/80 transition-colors"
+              >
+                Download
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-4 p-3 bg-[#4CAF50]/10 border border-[#4CAF50] rounded-lg">
+        <p className="text-xs text-[#4CAF50]">
+          🔒 All documents are securely stored on IPFS and verified by platform administrators.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// Investors Tab Component
+function InvestorsTab({ fractionalBuyers, assetData, formatPrice }) {
+  if (!fractionalBuyers || fractionalBuyers.length === 0) {
+    return (
+      <div className="text-center py-10 text-[#6D6041]">
+        <Users className="w-12 h-12 mx-auto mb-3 opacity-50" />
+        <p className="mb-2">No investors yet</p>
+        <p className="text-sm">Waiting for first fractional purchase</p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <h3 className="text-[#CAAB5B] text-lg font-bold mb-4">
+        Current Investors ({fractionalBuyers.length})
+      </h3>
+
+      <div className="bg-[#121317] border border-[#2C2C2C] rounded-lg p-4 mb-6 grid grid-cols-3 gap-4">
+        <div>
+          <div className="text-xs text-[#6D6041] mb-1">Total Investors</div>
+          <div className="text-2xl font-bold text-[#E1E2E2]">{fractionalBuyers.length}</div>
+        </div>
+        <div>
+          <div className="text-xs text-[#6D6041] mb-1">Tokens Sold</div>
+          <div className="text-2xl font-bold text-[#4CAF50]">
+            {Number(assetData.totalFractionalTokens) - Number(assetData.remainingFractionalTokens)} / {Number(assetData.totalFractionalTokens)}
+          </div>
+        </div>
+        <div>
+          <div className="text-xs text-[#6D6041] mb-1">% Sold</div>
+          <div className="text-2xl font-bold text-[#CAAB5B]">
+            {(((Number(assetData.totalFractionalTokens) - Number(assetData.remainingFractionalTokens)) / Number(assetData.totalFractionalTokens)) * 100).toFixed(1)}%
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-[#121317] border border-[#2C2C2C] rounded-lg overflow-hidden">
+        <table className="w-full">
+          <thead className="bg-[#0D0E11] border-b border-[#2C2C2C]">
+            <tr>
+              <th className="text-left text-xs text-[#6D6041] font-bold p-3">Rank</th>
+              <th className="text-left text-xs text-[#6D6041] font-bold p-3">Investor</th>
+              <th className="text-right text-xs text-[#6D6041] font-bold p-3">Tokens</th>
+              <th className="text-right text-xs text-[#6D6041] font-bold p-3">Ownership</th>
+              <th className="text-right text-xs text-[#6D6041] font-bold p-3">Investment</th>
+            </tr>
+          </thead>
+          <tbody>
+            {fractionalBuyers
+              .sort((a, b) => Number(b.numTokens) - Number(a.numTokens))
+              .map((buyer, i) => (
+                <tr key={i} className={i < fractionalBuyers.length - 1 ? 'border-b border-[#2C2C2C]' : ''}>
+                  <td className="text-[#E1E2E2] font-bold p-3">#{i + 1}</td>
+                  <td className="text-[#E1E2E2] font-mono text-sm p-3">
+                    {buyer.buyer.slice(0, 6)}...{buyer.buyer.slice(-4)}
+                  </td>
+                  <td className="text-[#E1E2E2] text-right font-bold p-3">
+                    {buyer.numTokens.toString()}
+                  </td>
+                  <td className="text-[#4CAF50] text-right font-bold p-3">
+                    {(Number(buyer.percentage) / 100).toFixed(2)}%
+                  </td>
+                  <td className="text-[#CAAB5B] text-right font-bold p-3">
+                    ${formatPrice(BigInt(buyer.numTokens) * assetData.pricePerFractionalToken)}
+                  </td>
+                </tr>
+              ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="mt-4 p-3 bg-[#CAAB5B]/10 border border-[#CAAB5B] rounded-lg">
+        <p className="text-xs text-[#CAAB5B]">
+          ℹ️ Investor rankings are based on number of tokens held. All data is public on the blockchain.
+        </p>
+      </div>
+    </div>
+  );
+}
