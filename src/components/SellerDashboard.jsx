@@ -327,7 +327,6 @@ if (!isSeller) {
           </div>
         </div>
 
-        {/* Stats Overview */}
         <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-4 mb-10">
           <div className="bg-[#111216] border border-[#2C2C2C] rounded-xl p-5">
             <div className="text-[#6D6041] text-xs mb-2">
@@ -363,7 +362,6 @@ if (!isSeller) {
           </div>
         </div>
 
-        {/* Seller Metrics */}
         {sellerMetrics && (
           <div className="bg-[#111216] border border-[#2C2C2C] rounded-xl p-6 mb-10">
             <h3 className="text-[#E1E2E2] text-lg font-bold mb-4">
@@ -400,7 +398,6 @@ if (!isSeller) {
           </div>
         )}
 
-        {/* Transaction Status */}
         {hash && (
           <div className="mb-6 p-4 bg-[#111216] border border-[#2C2C2C] rounded-xl">
             {isConfirming && (
@@ -428,7 +425,6 @@ if (!isSeller) {
           </div>
         )}
 
-        {/* Pending Payment Section */}
         {pendingPaymentAssets.length > 0 && (
           <>
             <h2 className="text-[#ff9800] text-2xl font-bold mb-6 flex items-center gap-2">
@@ -454,7 +450,6 @@ if (!isSeller) {
           </>
         )}
 
-        {/* Available Assets Section */}
         {availableAssets.length > 0 && (
           <>
             <h2 className="text-[#CAAB5B] text-2xl font-bold mb-6 flex items-center gap-2">
@@ -479,7 +474,6 @@ if (!isSeller) {
           </>
         )}
 
-        {/* Fractionalized Assets Section */}
         {fractionalizedAssets.length > 0 && (
           <>
             <h2 className="text-[#CAAB5B] text-2xl font-bold mb-6 flex items-center gap-2">
@@ -505,7 +499,6 @@ if (!isSeller) {
           </>
         )}
 
-        {/* Sold Assets Section */}
         {soldAssets.length > 0 && (
           <>
             <h2 className="text-[#4CAF50] text-2xl font-bold mb-6 flex items-center gap-2">
