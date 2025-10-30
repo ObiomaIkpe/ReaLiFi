@@ -270,7 +270,7 @@ export const AdminAssetDetailsPage = () => {
       <div className="bg-[#111216] border-b border-[#2C2C2C]">
         <div className="max-w-7xl mx-auto px-4 py-4">
           <button
-            onClick={() => navigate('/admin')}
+            onClick={() => navigate('/admin-dashboard')}
             className="flex items-center gap-2 text-[#6D6041] hover:text-[#CAAB5B] transition-colors mb-4"
           >
             <ArrowLeft className="w-5 h-5" />

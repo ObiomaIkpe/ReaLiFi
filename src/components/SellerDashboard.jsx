@@ -19,7 +19,7 @@ export function SellerDashboard() {
   const [dividendAmount, setDividendAmount] = useState('');
 
   // Check if user is a registered seller
-  const { data: isSeller } = useReadContract({
+  const { data: isSeller, isLoading: isSellerLoading, isError: isSellerError, error: sellerError, refetch: refetchSeller } = useReadContract({
     address: REAL_ESTATE_DAPP_ADDRESS,
     abi: REAL_ESTATE_DAPP,
     functionName: 'sellers',
@@ -27,7 +27,7 @@ export function SellerDashboard() {
   });
 
   // Fetch seller's assets
-  const { data: assets, isLoading, isError, refetch } = useReadContract({
+  const { data: assets, isLoading, isError, error: assetsError, refetch } = useReadContract({
     address: REAL_ESTATE_DAPP_ADDRESS,
     abi: REAL_ESTATE_DAPP,
     functionName: 'getSellerAssets',
@@ -35,7 +35,7 @@ export function SellerDashboard() {
   });
 
   // Get seller metrics
-  const { data: sellerMetrics } = useReadContract({
+  const { data: sellerMetrics, isError: isMetricsError, error: metricsError, refetch: refetchMetrics } = useReadContract({
     address: REAL_ESTATE_DAPP_ADDRESS,
     abi: REAL_ESTATE_DAPP,
     functionName: 'getSellerMetrics',
@@ -86,6 +86,7 @@ export function SellerDashboard() {
       });
     } catch (err) {
       console.error('Error delisting asset:', err);
+      alert('Failed to delist asset: ' + (err.message || 'Unknown error. Please check your wallet and try again.'));
       setActionTokenId(null);
     }
   };
@@ -103,6 +104,7 @@ export function SellerDashboard() {
       });
     } catch (err) {
       console.error('Error confirming payment:', err);
+      alert('Failed to confirm payment: ' + (err.message || 'Unknown error. Please check your wallet and try again.'));
       setActionTokenId(null);
     }
   };
@@ -120,6 +122,7 @@ export function SellerDashboard() {
       });
     } catch (err) {
       console.error('Error fractionalizing asset:', err);
+      alert('Failed to fractionalize asset: ' + (err.message || 'Unknown error. Please check your wallet and try again.'));
       setActionTokenId(null);
     }
   };
@@ -137,6 +140,7 @@ export function SellerDashboard() {
       });
     } catch (err) {
       console.error('Error distributing dividend:', err);
+      alert('Failed to distribute dividend: ' + (err.message || 'Unknown error. Please check your wallet and sufficient USDC balance.'));
       setActionTokenId(null);
     }
   };
@@ -178,6 +182,7 @@ const handleRegisterSeller = async () => {
     });
   } catch (err) {
     console.error('Error registering as seller:', err);
+    alert('Failed to register as seller: ' + (err.message || 'Unknown error. Please check your wallet and try again.'));
     setIsRegistering(false);
   }
 };
@@ -188,6 +193,48 @@ if (isRegisterSuccess) {
     setIsRegistering(false);
     window.location.reload(); // Reload to update seller status
   }, 2000);
+}
+
+// Handle seller status loading
+if (isSellerLoading) {
+  return (
+    <div className="bg-[#121317] min-h-screen py-10 px-5 flex justify-center items-center">
+      <div className="text-center">
+        <div className="text-5xl mb-4">⏳</div>
+        <div className="text-[#E1E2E2] text-lg mb-2">
+          Checking seller status...
+        </div>
+        <div className="text-[#6D6041] text-sm">
+          Please wait while we verify your account
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Handle seller status error
+if (isSellerError) {
+  return (
+    <div className="bg-[#121317] min-h-screen py-10 px-5 flex justify-center items-center">
+      <div className="bg-[#111216] border border-[#f44336] rounded-xl p-10 text-center max-w-[500px]">
+        <div className="text-5xl mb-4">⚠️</div>
+        <div className="text-[#E1E2E2] text-lg mb-2">
+          Failed to Check Seller Status
+        </div>
+        <div className="text-[#6D6041] text-sm mb-4">
+          {sellerError?.message || 'Unable to verify your seller status. Please check your wallet connection and network.'}
+        </div>
+        <button
+          onClick={() => refetchSeller()}
+          className="py-3.5 px-7 bg-[#CAAB5B] text-[#121317] border-none rounded-lg text-base font-bold cursor-pointer transition-opacity"
+          onMouseEnter={(e) => e.currentTarget.style.opacity = '0.9'}
+          onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+        >
+          🔄 Retry
+        </button>
+      </div>
+    </div>
+  );
 }
 
 // Update the "Not a Registered Seller" section
@@ -288,8 +335,32 @@ if (!isSeller) {
   if (isError) {
     return (
       <div className="bg-[#121317] min-h-screen py-10 px-5 flex justify-center items-center">
-        <div className="text-[#E1E2E2] text-lg">
-          Error loading your assets
+        <div className="bg-[#111216] border border-[#f44336] rounded-xl p-10 text-center max-w-[500px]">
+          <div className="text-5xl mb-4">❌</div>
+          <div className="text-[#E1E2E2] text-lg mb-2">
+            Error Loading Assets
+          </div>
+          <div className="text-[#6D6041] text-sm mb-4">
+            {assetsError?.message || 'Unable to load your assets. This could be due to network issues or wallet connection problems.'}
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={() => window.location.reload()}
+              className="py-3.5 px-5 bg-[#2C2C2C] text-[#E1E2E2] border-none rounded-lg text-sm font-bold cursor-pointer transition-opacity"
+              onMouseEnter={(e) => e.currentTarget.style.opacity = '0.9'}
+              onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+            >
+              🔄 Reload Page
+            </button>
+            <button
+              onClick={() => refetch()}
+              className="py-3.5 px-5 bg-[#CAAB5B] text-[#121317] border-none rounded-lg text-sm font-bold cursor-pointer transition-opacity"
+              onMouseEnter={(e) => e.currentTarget.style.opacity = '0.9'}
+              onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+            >
+              🔄 Retry
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -420,8 +491,44 @@ if (!isSeller) {
         )}
 
         {error && (
-          <div className="mb-6 p-4 bg-[#f44336] rounded-xl text-white">
-            Error: {error.message}
+          <div className="mb-6 p-4 bg-[#111216] border border-[#f44336] rounded-xl">
+            <div className="flex justify-between items-start mb-2">
+              <div className="text-[#f44336] font-bold">
+                ❌ Transaction Error
+              </div>
+              <button
+                onClick={() => window.location.reload()}
+                className="bg-transparent border-none text-[#6D6041] text-xl cursor-pointer p-0"
+              >
+                ×
+              </button>
+            </div>
+            <div className="text-[#E1E2E2] text-sm mb-3">
+              {error.message || 'An error occurred during the transaction'}
+            </div>
+            <div className="text-[#6D6041] text-xs">
+              💡 Tip: Make sure you have enough tokens and gas, and that you're on the correct network
+            </div>
+          </div>
+        )}
+
+        {/* Metrics Error Warning */}
+        {isMetricsError && (
+          <div className="mb-6 p-4 bg-[#111216] border border-[#ff9800] rounded-xl">
+            <div className="text-[#ff9800] font-bold mb-2">
+              ⚠️ Metrics Unavailable
+            </div>
+            <div className="text-[#E1E2E2] text-sm mb-3">
+              Unable to load performance metrics: {metricsError?.message || 'Unknown error'}
+            </div>
+            <button
+              onClick={() => refetchMetrics()}
+              className="py-2 px-4 bg-[#ff9800] text-[#121317] border-none rounded-lg text-xs font-bold cursor-pointer transition-opacity"
+              onMouseEnter={(e) => e.currentTarget.style.opacity = '0.9'}
+              onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+            >
+              🔄 Retry Loading Metrics
+            </button>
           </div>
         )}
 

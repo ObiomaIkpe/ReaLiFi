@@ -34,7 +34,6 @@ export function AssetDetailsPage() {
     enabled: !!tokenId
   });
 
-  // Fetch USDC balance
   const { data: usdcBalance, refetch: refetchBalance } = useReadContract({
     address: MOCK_USDC_ADDRESS,
     abi: MOCK_USDC,
@@ -42,7 +41,6 @@ export function AssetDetailsPage() {
     args: address ? [address] : undefined,
   });
 
-  // Fetch USDC allowance
   const { data: usdcAllowance, refetch: refetchAllowance } = useReadContract({
     address: MOCK_USDC_ADDRESS,
     abi: MOCK_USDC,
@@ -50,7 +48,6 @@ export function AssetDetailsPage() {
     args: address ? [address, REAL_ESTATE_DAPP_ADDRESS] : undefined,
   });
 
-  // Fetch fractional buyers if applicable
   const { data: fractionalBuyers } = useReadContract({
     address: REAL_ESTATE_DAPP_ADDRESS,
     abi: REAL_ESTATE_DAPP,
@@ -59,7 +56,6 @@ export function AssetDetailsPage() {
     enabled: !!tokenId && asset?.isFractionalized
   });
 
-  // Transaction handling
   const { data: hash, writeContract, isPending, error: transactionError } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 

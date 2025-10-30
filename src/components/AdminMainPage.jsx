@@ -106,7 +106,7 @@ export const AdminDashboard = () => {
 
   const handleAssetClick = (tokenId) => {
     showNotification(`Navigating to asset #${tokenId}...`, 'success');
-    navigate(`/asset/${tokenId}`);
+    navigate(`/admin/asset/${tokenId}`);
   };
 
   // Verify an asset on the blockchain
