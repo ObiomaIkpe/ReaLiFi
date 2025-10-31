@@ -7,7 +7,7 @@ async function bootstrap() {
   console.log('ENV TEST →', process.env.PINATA_JWT ? 'Loaded ✅' : 'Missing ❌');
 
   app.enableCors({
-    origin: 'http://localhost:5173', 
+    origin: '*', 
     credentials: true,
   });
   await app.listen(process.env.PORT ?? 3000);

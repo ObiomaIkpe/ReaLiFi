@@ -29,6 +29,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
         DB_USERNAME: Joi.string().required(),
         DB_PASSWORD: Joi.string().required(),
         DB_NAME: Joi.string().required(),
+        DATABASE_URL: Joi.string().required(),
         
         // Pinata config
         PINATA_API_KEY: Joi.string().required(),
@@ -43,11 +44,12 @@ import { TypeOrmModule } from '@nestjs/typeorm';
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
         type: 'postgres',
-        host: configService.get('database.host'),
-        port: configService.get('database.port'),
-        username: configService.get('database.username'),
-        password: configService.get('database.password'),
-        database: configService.get('database.database'),
+        // host: configService.get('database.host'),
+        // port: configService.get('database.port'),
+        // username: configService.get('database.username'),
+        // password: configService.get('database.password'),
+        // database: configService.get('database.database'),
+        url: process.env.DATABASE_URL,
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
         synchronize: process.env.NODE_ENV !== 'production',
       }),
