@@ -6,7 +6,7 @@ This repository contains the **frontend** of the REALiFI platform — built with
 
 ---
 
-## 🚀 Tech Stack
+## Tech Stack
 
 | Layer | Technology |
 |-------|-------------|
@@ -22,7 +22,7 @@ This repository contains the **frontend** of the REALiFI platform — built with
 
 ---
 
-## 🧠 How It Works
+## How It Works
 
 1. **Wallet Connection**  
    Users connect their Hedera-compatible wallet through **RainbowKit** and **Wagmi**.
@@ -47,7 +47,7 @@ This repository contains the **frontend** of the REALiFI platform — built with
 - **npm** or **yarn**  
 - Access to a **Hedera Testnet wallet** (e.g., HashPack)  
 - The **REALiFI backend** (NestJS + IPFS) available at:  
-  👉 `https://realifi.onrender.com`
+   `https://realifi.onrender.com`
 
 ---
 
