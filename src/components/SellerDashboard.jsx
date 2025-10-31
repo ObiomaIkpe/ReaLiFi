@@ -3,6 +3,26 @@ import { useReadContract, useAccount, useWriteContract, useWaitForTransactionRec
 import { REAL_ESTATE_DAPP, REAL_ESTATE_DAPP_ADDRESS } from '../config/contract.config';
 import { formatUnits, parseUnits } from 'viem';
 
+// Safe tokenId conversion helper
+const safeTokenId = (tokenId) => {
+  if (typeof tokenId === 'bigint') return tokenId;
+  if (typeof tokenId === 'string' && /^\d+$/.test(tokenId)) return BigInt(tokenId);
+  if (typeof tokenId === 'number') return BigInt(tokenId);
+  console.error('Invalid tokenId:', tokenId);
+  return null;
+};
+
+// Safe asset validator
+const isValidAsset = (asset) => {
+  try {
+    const tokenId = safeTokenId(asset.tokenId);
+    return tokenId !== null;
+  } catch (e) {
+    console.error('Invalid asset detected:', asset, e);
+    return false;
+  }
+};
+
 export function SellerDashboard() {
   const { address, isConnected } = useAccount();
   const [actionTokenId, setActionTokenId] = useState(null);
@@ -11,7 +31,6 @@ export function SellerDashboard() {
   const [selectedAsset, setSelectedAsset] = useState(null);
   const [isRegistering, setIsRegistering] = useState(false);
 
-  
   // Fractionalization inputs
   const [totalTokens, setTotalTokens] = useState('100');
   
@@ -27,12 +46,30 @@ export function SellerDashboard() {
   });
 
   // Fetch seller's assets
-  const { data: assets, isLoading, isError, error: assetsError, refetch } = useReadContract({
+  const { data: rawAssets, isLoading, isError, error: assetsError, refetch } = useReadContract({
     address: REAL_ESTATE_DAPP_ADDRESS,
     abi: REAL_ESTATE_DAPP,
     functionName: 'getSellerAssets',
     args: address ? [address] : undefined,
   });
+
+  // Debug and validate assets
+  if (rawAssets) {
+    console.log('Raw assets data:', rawAssets);
+    rawAssets.forEach((asset, index) => {
+      console.log(`Asset ${index}:`, {
+        tokenId: asset.tokenId,
+        tokenIdType: typeof asset.tokenId,
+        isValid: isValidAsset(asset)
+      });
+    });
+  }
+
+  // Filter and validate assets
+  const assets = rawAssets?.filter(isValidAsset).map(asset => ({
+    ...asset,
+    tokenId: safeTokenId(asset.tokenId)
+  })) || [];
 
   // Get seller metrics
   const { data: sellerMetrics, isError: isMetricsError, error: metricsError, refetch: refetchMetrics } = useReadContract({
@@ -76,13 +113,19 @@ export function SellerDashboard() {
   const handleDelistAsset = async () => {
     if (!selectedAsset) return;
 
+    const tokenId = safeTokenId(selectedAsset.tokenId);
+    if (!tokenId) {
+      alert('Invalid token ID');
+      return;
+    }
+
     try {
-      setActionTokenId(selectedAsset.tokenId);
+      setActionTokenId(tokenId);
       writeContract({
         address: REAL_ESTATE_DAPP_ADDRESS,
         abi: REAL_ESTATE_DAPP,
         functionName: 'delistAsset',
-        args: [selectedAsset.tokenId],
+        args: [tokenId],
       });
     } catch (err) {
       console.error('Error delisting asset:', err);
@@ -94,13 +137,19 @@ export function SellerDashboard() {
   const handleConfirmPayment = async () => {
     if (!selectedAsset) return;
 
+    const tokenId = safeTokenId(selectedAsset.tokenId);
+    if (!tokenId) {
+      alert('Invalid token ID');
+      return;
+    }
+
     try {
-      setActionTokenId(selectedAsset.tokenId);
+      setActionTokenId(tokenId);
       writeContract({
         address: REAL_ESTATE_DAPP_ADDRESS,
         abi: REAL_ESTATE_DAPP,
         functionName: 'confirmAssetPayment',
-        args: [selectedAsset.tokenId],
+        args: [tokenId],
       });
     } catch (err) {
       console.error('Error confirming payment:', err);
@@ -112,13 +161,19 @@ export function SellerDashboard() {
   const handleFractionalizeAsset = async () => {
     if (!selectedAsset || !totalTokens) return;
 
+    const tokenId = safeTokenId(selectedAsset.tokenId);
+    if (!tokenId) {
+      alert('Invalid token ID');
+      return;
+    }
+
     try {
-      setActionTokenId(selectedAsset.tokenId);
+      setActionTokenId(tokenId);
       writeContract({
         address: REAL_ESTATE_DAPP_ADDRESS,
         abi: REAL_ESTATE_DAPP,
         functionName: 'createFractionalAsset',
-        args: [selectedAsset.tokenId, BigInt(totalTokens)],
+        args: [tokenId, BigInt(totalTokens)],
       });
     } catch (err) {
       console.error('Error fractionalizing asset:', err);
@@ -130,13 +185,19 @@ export function SellerDashboard() {
   const handleDistributeDividend = async () => {
     if (!selectedAsset || !dividendAmount) return;
 
+    const tokenId = safeTokenId(selectedAsset.tokenId);
+    if (!tokenId) {
+      alert('Invalid token ID');
+      return;
+    }
+
     try {
-      setActionTokenId(selectedAsset.tokenId);
+      setActionTokenId(tokenId);
       writeContract({
         address: REAL_ESTATE_DAPP_ADDRESS,
         abi: REAL_ESTATE_DAPP,
         functionName: 'distributeFractionalDividends',
-        args: [selectedAsset.tokenId, parseUnits(dividendAmount, 6)], // USDC has 6 decimals
+        args: [tokenId, parseUnits(dividendAmount, 6)],
       });
     } catch (err) {
       console.error('Error distributing dividend:', err);
@@ -159,152 +220,150 @@ export function SellerDashboard() {
   }
 
   const { 
-  data: registerHash, 
-  writeContract: registerSeller, 
-  isPending: isRegisterPending 
-} = useWriteContract();
+    data: registerHash, 
+    writeContract: registerSeller, 
+    isPending: isRegisterPending 
+  } = useWriteContract();
 
-const { 
-  isLoading: isRegisterConfirming, 
-  isSuccess: isRegisterSuccess 
-} = useWaitForTransactionReceipt({
-  hash: registerHash,
-});
+  const { 
+    isLoading: isRegisterConfirming, 
+    isSuccess: isRegisterSuccess 
+  } = useWaitForTransactionReceipt({
+    hash: registerHash,
+  });
 
-// Add registration handler
-const handleRegisterSeller = async () => {
-  try {
-    setIsRegistering(true);
-    registerSeller({
-      address: REAL_ESTATE_DAPP_ADDRESS,
-      abi: REAL_ESTATE_DAPP,
-      functionName: 'registerSeller',
-    });
-  } catch (err) {
-    console.error('Error registering as seller:', err);
-    alert('Failed to register as seller: ' + (err.message || 'Unknown error. Please check your wallet and try again.'));
-    setIsRegistering(false);
+  const handleRegisterSeller = async () => {
+    try {
+      setIsRegistering(true);
+      registerSeller({
+        address: REAL_ESTATE_DAPP_ADDRESS,
+        abi: REAL_ESTATE_DAPP,
+        functionName: 'registerSeller',
+      });
+    } catch (err) {
+      console.error('Error registering as seller:', err);
+      alert('Failed to register as seller: ' + (err.message || 'Unknown error. Please check your wallet and try again.'));
+      setIsRegistering(false);
+    }
+  };
+
+  // Refetch seller status when registration succeeds
+  if (isRegisterSuccess) {
+    setTimeout(() => {
+      setIsRegistering(false);
+      window.location.reload();
+    }, 2000);
   }
-};
 
-// Refetch seller status when registration succeeds
-if (isRegisterSuccess) {
-  setTimeout(() => {
-    setIsRegistering(false);
-    window.location.reload(); // Reload to update seller status
-  }, 2000);
-}
-
-// Handle seller status loading
-if (isSellerLoading) {
-  return (
-    <div className="bg-[#121317] min-h-screen py-10 px-5 flex justify-center items-center">
-      <div className="text-center">
-        <div className="text-5xl mb-4">⏳</div>
-        <div className="text-[#E1E2E2] text-lg mb-2">
-          Checking seller status...
-        </div>
-        <div className="text-[#6D6041] text-sm">
-          Please wait while we verify your account
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// Handle seller status error
-if (isSellerError) {
-  return (
-    <div className="bg-[#121317] min-h-screen py-10 px-5 flex justify-center items-center">
-      <div className="bg-[#111216] border border-[#f44336] rounded-xl p-10 text-center max-w-[500px]">
-        <div className="text-5xl mb-4">⚠️</div>
-        <div className="text-[#E1E2E2] text-lg mb-2">
-          Failed to Check Seller Status
-        </div>
-        <div className="text-[#6D6041] text-sm mb-4">
-          {sellerError?.message || 'Unable to verify your seller status. Please check your wallet connection and network.'}
-        </div>
-        <button
-          onClick={() => refetchSeller()}
-          className="py-3.5 px-7 bg-[#CAAB5B] text-[#121317] border-none rounded-lg text-base font-bold cursor-pointer transition-opacity"
-          onMouseEnter={(e) => e.currentTarget.style.opacity = '0.9'}
-          onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
-        >
-          🔄 Retry
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// Update the "Not a Registered Seller" section
-if (!isSeller) {
-  return (
-    <div className="bg-[#121317] min-h-screen py-10 px-5 flex justify-center items-center">
-      <div className="bg-[#111216] border border-[#2C2C2C] rounded-xl p-10 text-center max-w-[500px]">
-        <div className="text-5xl mb-4">🏠</div>
-        <div className="text-[#E1E2E2] text-lg mb-2">
-          Not a Registered Seller
-        </div>
-        <div className="text-[#6D6041] text-sm mb-6">
-          You need to register as a seller to access this dashboard and list your real estate assets
-        </div>
-
-        {/* Transaction Status for Registration */}
-        {registerHash && (
-          <div className="mb-6 p-4 bg-[#121317] border border-[#2C2C2C] rounded-xl text-left">
-            {isRegisterConfirming && (
-              <div className="text-[#CAAB5B] mb-2 font-bold">
-                ⏳ Registration confirming...
-              </div>
-            )}
-            {isRegisterSuccess && (
-              <div className="text-[#4CAF50] mb-2 font-bold">
-                ✓ Registration successful! Redirecting...
-              </div>
-            )}
-            <div className="text-[#6D6041] text-xs mb-1">
-              Transaction Hash:
-            </div>
-            <div className="text-[#E1E2E2] text-[11px] font-mono break-all">
-              {registerHash}
-            </div>
+  // Handle seller status loading
+  if (isSellerLoading) {
+    return (
+      <div className="bg-[#121317] min-h-screen py-10 px-5 flex justify-center items-center">
+        <div className="text-center">
+          <div className="text-5xl mb-4">⏳</div>
+          <div className="text-[#E1E2E2] text-lg mb-2">
+            Checking seller status...
           </div>
-        )}
-
-        <button
-          onClick={handleRegisterSeller}
-          disabled={isRegisterPending || isRegisterConfirming || isRegistering}
-          className="py-3.5 px-7 border-none rounded-lg text-base font-bold transition-opacity w-full"
-          style={{
-            backgroundColor: isRegisterPending || isRegisterConfirming || isRegistering ? '#2C2C2C' : '#CAAB5B',
-            color: isRegisterPending || isRegisterConfirming || isRegistering ? '#6D6041' : '#121317',
-            cursor: isRegisterPending || isRegisterConfirming || isRegistering ? 'not-allowed' : 'pointer',
-          }}
-          onMouseEnter={(e) => {
-            if (!isRegisterPending && !isRegisterConfirming && !isRegistering) {
-              e.currentTarget.style.opacity = '0.9';
-            }
-          }}
-          onMouseLeave={(e) => {
-            if (!isRegisterPending && !isRegisterConfirming && !isRegistering) {
-              e.currentTarget.style.opacity = '1';
-            }
-          }}
-        >
-          {isRegisterPending && 'Confirm in wallet...'}
-          {isRegisterConfirming && 'Registering...'}
-          {isRegisterSuccess && 'Success! Redirecting...'}
-          {!isRegisterPending && !isRegisterConfirming && !isRegisterSuccess && 'Register as Seller'}
-        </button>
-
-        <div className="mt-4 p-3 bg-[#121317] border border-[#2C2C2C] rounded-lg text-xs text-[#6D6041] text-center">
-          ℹ️ Free to register - no fees required
+          <div className="text-[#6D6041] text-sm">
+            Please wait while we verify your account
+          </div>
         </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
+
+  // Handle seller status error
+  if (isSellerError) {
+    return (
+      <div className="bg-[#121317] min-h-screen py-10 px-5 flex justify-center items-center">
+        <div className="bg-[#111216] border border-[#f44336] rounded-xl p-10 text-center max-w-[500px]">
+          <div className="text-5xl mb-4">⚠️</div>
+          <div className="text-[#E1E2E2] text-lg mb-2">
+            Failed to Check Seller Status
+          </div>
+          <div className="text-[#6D6041] text-sm mb-4">
+            {sellerError?.message || 'Unable to verify your seller status. Please check your wallet connection and network.'}
+          </div>
+          <button
+            onClick={() => refetchSeller()}
+            className="py-3.5 px-7 bg-[#CAAB5B] text-[#121317] border-none rounded-lg text-base font-bold cursor-pointer transition-opacity"
+            onMouseEnter={(e) => e.currentTarget.style.opacity = '0.9'}
+            onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+          >
+            🔄 Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Not a Registered Seller
+  if (!isSeller) {
+    return (
+      <div className="bg-[#121317] min-h-screen py-10 px-5 flex justify-center items-center">
+        <div className="bg-[#111216] border border-[#2C2C2C] rounded-xl p-10 text-center max-w-[500px]">
+          <div className="text-5xl mb-4">🏠</div>
+          <div className="text-[#E1E2E2] text-lg mb-2">
+            Not a Registered Seller
+          </div>
+          <div className="text-[#6D6041] text-sm mb-6">
+            You need to register as a seller to access this dashboard and list your real estate assets
+          </div>
+
+          {registerHash && (
+            <div className="mb-6 p-4 bg-[#121317] border border-[#2C2C2C] rounded-xl text-left">
+              {isRegisterConfirming && (
+                <div className="text-[#CAAB5B] mb-2 font-bold">
+                  ⏳ Registration confirming...
+                </div>
+              )}
+              {isRegisterSuccess && (
+                <div className="text-[#4CAF50] mb-2 font-bold">
+                  ✓ Registration successful! Redirecting...
+                </div>
+              )}
+              <div className="text-[#6D6041] text-xs mb-1">
+                Transaction Hash:
+              </div>
+              <div className="text-[#E1E2E2] text-[11px] font-mono break-all">
+                {registerHash}
+              </div>
+            </div>
+          )}
+
+          <button
+            onClick={handleRegisterSeller}
+            disabled={isRegisterPending || isRegisterConfirming || isRegistering}
+            className="py-3.5 px-7 border-none rounded-lg text-base font-bold transition-opacity w-full"
+            style={{
+              backgroundColor: isRegisterPending || isRegisterConfirming || isRegistering ? '#2C2C2C' : '#CAAB5B',
+              color: isRegisterPending || isRegisterConfirming || isRegistering ? '#6D6041' : '#121317',
+              cursor: isRegisterPending || isRegisterConfirming || isRegistering ? 'not-allowed' : 'pointer',
+            }}
+            onMouseEnter={(e) => {
+              if (!isRegisterPending && !isRegisterConfirming && !isRegistering) {
+                e.currentTarget.style.opacity = '0.9';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!isRegisterPending && !isRegisterConfirming && !isRegistering) {
+                e.currentTarget.style.opacity = '1';
+              }
+            }}
+          >
+            {isRegisterPending && 'Confirm in wallet...'}
+            {isRegisterConfirming && 'Registering...'}
+            {isRegisterSuccess && 'Success! Redirecting...'}
+            {!isRegisterPending && !isRegisterConfirming && !isRegisterSuccess && 'Register as Seller'}
+          </button>
+
+          <div className="mt-4 p-3 bg-[#121317] border border-[#2C2C2C] rounded-lg text-xs text-[#6D6041] text-center">
+            ℹ️ Free to register - no fees required
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!isConnected) {
     return (
@@ -366,19 +425,19 @@ if (!isSeller) {
     );
   }
 
-  const availableAssets = assets?.filter(
+  const availableAssets = assets.filter(
     asset => !asset.sold && !asset.isCanceled && !asset.isFractionalized
-  ) || [];
+  );
 
-  const fractionalizedAssets = assets?.filter(
+  const fractionalizedAssets = assets.filter(
     asset => asset.isFractionalized
-  ) || [];
+  );
 
-  const pendingPaymentAssets = assets?.filter(
+  const pendingPaymentAssets = assets.filter(
     asset => asset.currentBuyer !== '0x0000000000000000000000000000000000000000' && !asset.isPaidFor
-  ) || [];
+  );
 
-  const soldAssets = assets?.filter(asset => asset.sold) || [];
+  const soldAssets = assets.filter(asset => asset.sold);
 
   return (
     <div className="bg-[#121317] min-h-screen py-10 px-5">
@@ -404,7 +463,7 @@ if (!isSeller) {
               TOTAL LISTINGS
             </div>
             <div className="text-[#E1E2E2] text-[28px] font-bold">
-              {assets?.length || 0}
+              {assets.length}
             </div>
           </div>
           <div className="bg-[#111216] border border-[#2C2C2C] rounded-xl p-5">
@@ -512,7 +571,6 @@ if (!isSeller) {
           </div>
         )}
 
-        {/* Metrics Error Warning */}
         {isMetricsError && (
           <div className="mb-6 p-4 bg-[#111216] border border-[#ff9800] rounded-xl">
             <div className="text-[#ff9800] font-bold mb-2">
@@ -631,8 +689,7 @@ if (!isSeller) {
           </>
         )}
 
-        {/* Empty State */}
-        {assets && assets.length === 0 && (
+        {assets.length === 0 && (
           <div className="text-center py-[60px] px-5 text-[#6D6041]">
             <div className="text-5xl mb-4">🏠</div>
             <div className="text-lg mb-2">No assets listed yet</div>
@@ -647,7 +704,6 @@ if (!isSeller) {
       {showConfirmModal && selectedAsset && (
         <div className="fixed inset-0 bg-black/80 flex justify-center items-center z-[1000] p-5">
           <div className="bg-[#111216] border border-[#2C2C2C] rounded-2xl p-8 max-w-[500px] w-full max-h-[90vh] overflow-y-auto">
-            {/* Modal Header */}
             <div className="flex justify-between items-center mb-6">
               <h2 className="m-0 text-2xl font-bold"
                 style={{
@@ -672,7 +728,6 @@ if (!isSeller) {
               </button>
             </div>
 
-            {/* Asset Details */}
             <div className="bg-[#121317] border border-[#2C2C2C] rounded-xl p-5 mb-6">
               <div className="flex justify-between mb-3">
                 <span className="text-[#6D6041] text-sm">Token ID</span>
@@ -720,7 +775,6 @@ if (!isSeller) {
               )}
             </div>
 
-            {/* Fractionalize Input */}
             {actionType === 'fractionalize' && (
               <div className="mb-6">
                 <label className="text-[#6D6041] text-sm block mb-2">
@@ -741,7 +795,6 @@ if (!isSeller) {
               </div>
             )}
 
-            {/* Dividend Input */}
             {actionType === 'dividend' && (
               <div className="mb-6">
                 <label className="text-[#6D6041] text-sm block mb-2">
@@ -761,7 +814,6 @@ if (!isSeller) {
               </div>
             )}
 
-            {/* Warning/Info Message */}
             <div className="rounded-xl p-4 mb-6 text-sm text-[#E1E2E2]"
               style={{
                 backgroundColor: actionType === 'delist' ? '#f4433620' : 
@@ -808,7 +860,6 @@ if (!isSeller) {
               )}
             </div>
 
-            {/* Action Buttons */}
             <div className="grid grid-cols-2 gap-3">
               <button
                 onClick={() => {
@@ -870,7 +921,6 @@ if (!isSeller) {
   );
 }
 
-// Updated Seller Asset Card Component
 function SellerAssetCard({
   asset,
   onDelist,
@@ -884,6 +934,18 @@ function SellerAssetCard({
   isSold = false,
   isFractionalized = false
 }) {
+  const tokenId = safeTokenId(asset.tokenId);
+  
+  if (!tokenId) {
+    return (
+      <div className="bg-[#111216] border border-[#f44336] rounded-xl p-6">
+        <div className="text-[#f44336] text-center">
+          ⚠️ Invalid Asset Data
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       className="bg-[#111216] rounded-xl p-6 transition-all"
@@ -903,10 +965,9 @@ function SellerAssetCard({
         }
       }}
     >
-      {/* Header */}
       <div className="flex justify-between items-center mb-5 pb-4 border-b border-[#2C2C2C]">
         <div className="bg-[#CAAB5B] text-[#121317] py-1.5 px-3 rounded-md text-sm font-bold">
-          #{asset.tokenId.toString()}
+          #{tokenId.toString()}
         </div>
         <div className="py-1.5 px-3 rounded-md text-xs font-medium text-white"
           style={{
@@ -916,7 +977,6 @@ function SellerAssetCard({
         </div>
       </div>
 
-      {/* Price */}
       <div className="mb-5">
         <div className="text-[#6D6041] text-xs mb-1 uppercase tracking-wider">
           Price
@@ -926,7 +986,6 @@ function SellerAssetCard({
         </div>
       </div>
 
-      {/* Fractional Info */}
       {isFractionalized && (
         <div className="bg-[#121317] border border-[#2C2C2C] rounded-lg p-3 mb-5">
           <div className="grid grid-cols-2 gap-3 mb-2">
@@ -958,7 +1017,6 @@ function SellerAssetCard({
         </div>
       )}
 
-      {/* Buyer Info (if applicable) */}
       {showConfirmPayment && asset.currentBuyer && (
         <div className="mb-5">
           <div className="text-[#6D6041] text-xs mb-1 uppercase tracking-wider">
@@ -970,7 +1028,6 @@ function SellerAssetCard({
         </div>
       )}
 
-      {/* Status */}
       <div className="flex gap-3 pt-4 border-t border-[#2C2C2C] mb-5">
         <div className="flex-1">
           <div className="text-[#6D6041] text-[11px] mb-1">
@@ -994,7 +1051,6 @@ function SellerAssetCard({
         )}
       </div>
 
-      {/* Action Buttons */}
       {!isSold && (
         <div className="grid gap-3"
           style={{
