@@ -1,4 +1,4 @@
-# 🧱 REALiFI Backend — NestJS + IPFS Integration
+#  REALiFI Backend — NestJS + IPFS Integration
 
 The **REALiFI Backend** powers the file and metadata management layer of the [REALiFI](https://github.com/your-username/realifi-frontend) platform — a blockchain-based real estate investment application.
 
@@ -6,7 +6,7 @@ It is built with **NestJS** and serves as a lightweight bridge between the **fro
 
 ---
 
-## 🚀 Overview
+## Overview
 
 The REALiFI backend performs a single, critical function:
 
@@ -17,7 +17,7 @@ The REALiFI backend performs a single, critical function:
 
 ---
 
-## 🧠 Tech Stack
+##  Tech Stack
 
 | Layer | Technology |
 |--------|-------------|
@@ -60,7 +60,7 @@ npm install
 npm run start:dev
 ```
 
-# 🧠 Blockchain Configuration
+#  Blockchain Configuration
 RPC_URL=https://ethereum-sepolia-rpc.publicnode.com
 CHAIN_ID=11155111
 
@@ -68,7 +68,7 @@ REAL_ESTATE_CONTRACT_ADDRESS=
 FRACTIONAL_CONTRACT_ADDRESS=
 USDC_CONTRACT_ADDRESS=
 
-# 🪙 Database Configuration
+#  Database Configuration
 DATABASE_URL=postgresql://realifi_user:********@dpg-********.oregon-postgres.render.com/realifi
 DB_HOST=dpg-********.oregon-postgres.render.com
 DB_PORT=5432
@@ -76,12 +76,12 @@ DB_USERNAME=
 DB_PASSWORD=
 DB_NAME=
 
-# 🌍 IPFS / Pinata Configuration
+#  IPFS / Pinata Configuration
 PINATA_API_KEY=
 PINATA_API_SECRET=
 PINATA_JWT=
 PINATA_GATEWAY_URL=https://yellow-causal-crawdad-435.mypinata.cloud
 
-# 🔑 JWT Configuration
+#  JWT Configuration
 JWT_SECRET=your_jwt_secret_here
 JWT_EXPIRES_IN=24h
