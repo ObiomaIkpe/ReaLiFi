@@ -372,7 +372,7 @@ Please open issues for bugs or feature requests.
 📧 anthonyikpegodspower@gmail.com  
 🎓 [Hedera Certification](https://drive.google.com/file/d/1DBkIVnrNY4hGmkty4x1Zae7DQTFBPIeI/view?usp=sharing)
 
-**Smart Contract Engineer:** Patrick Pius (Tech Scorpion)  
+**Smart Contract Engineer:** Patrick Pius Akpan (Tech Scorpion)  
 📧 techscorpion4@gmail.com  
 🎓 [Hedera Certification](https://drive.google.com/file/d/1vWeheLhUSVLQxB0OfumoaOt2THeIxIni/view?usp=drivesdk)
 
