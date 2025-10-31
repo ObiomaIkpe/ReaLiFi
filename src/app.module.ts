@@ -49,9 +49,12 @@ import { TypeOrmModule } from '@nestjs/typeorm';
         // username: configService.get('database.username'),
         // password: configService.get('database.password'),
         // database: configService.get('database.database'),
-        url: process.env.DATABASE_URL,
+        url: configService.get<string>('DATABASE_URL'),
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
         synchronize: process.env.NODE_ENV !== 'production',
+        ssl: {
+      rejectUnauthorized: false, // required for Render PostgreSQL
+        },
       }),
     }),
     
