@@ -23,7 +23,7 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/upload" element={<MultiStepForm />} />
           <Route path="/admin-dashboard" element={<AdminDashboard />} />
-          <Route path="/admin/asset/:propertyId" element={<AdminAssetDetailsPage />} />
+          <Route path="/admin/asset/:tokenId" element={<AdminAssetDetailsPage />} />
 
           <Route path="/seller-dashboard" element={<SellerDashboard />} />
           <Route path="/buyer-dashboard" element={<BuyerDashboardPage />} />

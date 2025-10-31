@@ -7,25 +7,19 @@ import { REAL_ESTATE_DAPP, REAL_ESTATE_DAPP_ADDRESS, MOCK_USDC, MOCK_USDC_ADDRES
 import { PurchaseModal } from '@/components/shared/PurchaseModal';
 
 export function AssetDetailsPage() {
-  const { tokenId } = useParams(); // Get tokenId from URL
+  const { tokenId } = useParams();
   const navigate = useNavigate();
   const { address, isConnected } = useAccount();
   
-  // State for tabs
   const [activeTab, setActiveTab] = useState('overview');
-  
-  // State for purchase modal
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [purchaseType, setPurchaseType] = useState(null);
   const [fractionalAmount, setFractionalAmount] = useState('');
   const [needsApproval, setNeedsApproval] = useState(false);
-  
-  // Metadata state
   const [metadata, setMetadata] = useState(null);
   const [metadataLoading, setMetadataLoading] = useState(false);
   const [metadataError, setMetadataError] = useState(null);
 
-  // Fetch asset data from blockchain
   const { data: asset, isLoading: assetLoading, error: assetError, refetch: refetchAsset } = useReadContract({
     address: REAL_ESTATE_DAPP_ADDRESS,
     abi: REAL_ESTATE_DAPP,
@@ -59,7 +53,6 @@ export function AssetDetailsPage() {
   const { data: hash, writeContract, isPending, error: transactionError } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
-  // Fetch metadata from IPFS
   useEffect(() => {
     if (!asset?.tokenURI) return;
     
@@ -82,7 +75,6 @@ export function AssetDetailsPage() {
       });
   }, [asset?.tokenURI]);
 
-  // Purchase handlers
   const handleApproveUSDC = async (amount) => {
     try {
       writeContract({
@@ -137,7 +129,6 @@ export function AssetDetailsPage() {
     setShowPurchaseModal(true);
   };
 
-  // Handle successful purchase
   useEffect(() => {
     if (isSuccess) {
       refetchBalance();
@@ -152,66 +143,29 @@ export function AssetDetailsPage() {
     }
   }, [isSuccess, refetchBalance, refetchAllowance, refetchAsset]);
 
-  // Loading state
   if (assetLoading || metadataLoading) {
     return (
-      <div style={{
-        backgroundColor: '#121317',
-        minHeight: '100vh',
-        padding: '40px 20px',
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center'
-      }}>
-        <div style={{
-          textAlign: 'center',
-          color: '#CAAB5B'
-        }}>
-          <div style={{ fontSize: '48px', marginBottom: '16px' }}>🔄</div>
-          <div style={{ fontSize: '18px' }}>Loading property details...</div>
+      <div className="bg-[#121317] min-h-screen py-10 px-5 flex justify-center items-center">
+        <div className="text-center text-[#CAAB5B]">
+          <div className="text-5xl mb-4">🔄</div>
+          <div className="text-lg">Loading property details...</div>
         </div>
       </div>
     );
   }
 
-  // Error state (asset doesn't exist)
   if (assetError || !asset) {
     return (
-      <div style={{
-        backgroundColor: '#121317',
-        minHeight: '100vh',
-        padding: '40px 20px',
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center'
-      }}>
-        <div style={{
-          backgroundColor: '#111216',
-          border: '1px solid #2C2C2C',
-          borderRadius: '12px',
-          padding: '40px',
-          textAlign: 'center',
-          maxWidth: '400px'
-        }}>
-          <div style={{ fontSize: '48px', marginBottom: '16px' }}>❌</div>
-          <div style={{ color: '#E1E2E2', fontSize: '18px', marginBottom: '8px' }}>
-            Property Not Found
-          </div>
-          <div style={{ color: '#6D6041', fontSize: '14px', marginBottom: '24px' }}>
+      <div className="bg-[#121317] min-h-screen py-10 px-5 flex justify-center items-center">
+        <div className="bg-[#111216] border border-[#2C2C2C] rounded-xl p-10 text-center max-w-[400px]">
+          <div className="text-5xl mb-4">❌</div>
+          <div className="text-[#E1E2E2] text-lg mb-2">Property Not Found</div>
+          <div className="text-[#6D6041] text-sm mb-6">
             Token ID #{tokenId} does not exist or failed to load
           </div>
           <button
             onClick={() => navigate('/marketplace')}
-            style={{
-              padding: '12px 24px',
-              backgroundColor: '#CAAB5B',
-              color: '#121317',
-              border: 'none',
-              borderRadius: '8px',
-              fontSize: '14px',
-              fontWeight: 'bold',
-              cursor: 'pointer'
-            }}
+            className="py-3 px-6 bg-[#CAAB5B] text-[#121317] border-0 rounded-lg text-sm font-bold cursor-pointer hover:opacity-90 transition-opacity"
           >
             Browse Properties
           </button>
@@ -220,7 +174,6 @@ export function AssetDetailsPage() {
     );
   }
 
-  // Calculate financial metrics
   const netMonthlyIncome = metadata?.financialDetails 
     ? parseFloat(metadata.financialDetails.monthlyRevenue || 0) - parseFloat(metadata.financialDetails.monthlyExpenses || 0)
     : 0;
@@ -230,61 +183,39 @@ export function AssetDetailsPage() {
     : 0;
 
   return (
-    <div style={{
-      backgroundColor: '#121317',
-      minHeight: '100vh',
-      padding: '40px 20px'
-    }}>
-      <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
+    <div className="bg-[#121317] min-h-screen py-10 px-5">
+      <div className="max-w-[1400px] mx-auto">
         
         {/* Breadcrumb */}
-        <div style={{
-          color: '#6D6041',
-          fontSize: '14px',
-          marginBottom: '24px',
-          display: 'flex',
-          gap: '8px',
-          alignItems: 'center'
-        }}>
-          <Link to="/" style={{ color: '#6D6041', textDecoration: 'none' }}>
+        <div className="text-[#6D6041] text-sm mb-6 flex gap-2 items-center">
+          <Link to="/" className="text-[#6D6041] no-underline hover:text-[#CAAB5B] transition-colors">
             Home
           </Link>
           <span>›</span>
-          <Link to="/marketplace" style={{ color: '#6D6041', textDecoration: 'none' }}>
+          <Link to="/marketplace" className="text-[#6D6041] no-underline hover:text-[#CAAB5B] transition-colors">
             Marketplace
           </Link>
           <span>›</span>
-          <span style={{ color: '#CAAB5B' }}>Property #{tokenId}</span>
+          <span className="text-[#CAAB5B]">Property #{tokenId}</span>
         </div>
 
         {/* Two-column layout */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 400px',
-          gap: '32px',
-          alignItems: 'start',
-          '@media (max-width: 1024px)': {
-            gridTemplateColumns: '1fr'
-          }
-        }}>
+        <div className="grid lg:grid-cols-[1fr_400px] grid-cols-1 gap-8 items-start">
           
-          {/* LEFT COLUMN: Details */}
+          {/* LEFT COLUMN */}
           <div>
-            {/* Image Gallery */}
             <ImageGallery 
               images={metadata?.media?.images} 
               verified={asset.verified}
               isFractionalized={asset.isFractionalized}
             />
 
-            {/* Property Header */}
             <PropertyHeader
               metadata={metadata}
               asset={asset}
               tokenId={tokenId}
             />
 
-            {/* Tabbed Content */}
             <TabbedContent
               activeTab={activeTab}
               setActiveTab={setActiveTab}
@@ -296,8 +227,8 @@ export function AssetDetailsPage() {
             />
           </div>
 
-          {/* RIGHT COLUMN: Purchase Widget (Sticky) */}
-          <div style={{ position: 'sticky', top: '20px' }}>
+          {/* RIGHT COLUMN */}
+          <div className="sticky top-5">
             <PurchaseWidget
               asset={asset}
               tokenId={tokenId}
@@ -315,7 +246,6 @@ export function AssetDetailsPage() {
         </div>
       </div>
 
-      {/* Purchase Modal */}
       {showPurchaseModal && asset && (
         <PurchaseModal
           asset={asset}
@@ -345,101 +275,39 @@ function ImageGallery({ images, verified, isFractionalized }) {
   const [selectedImage, setSelectedImage] = useState(0);
 
   return (
-    <div style={{
-      backgroundColor: '#111216',
-      border: '1px solid #2C2C2C',
-      borderRadius: '12px',
-      padding: '24px',
-      marginBottom: '24px'
-    }}>
+    <div className="bg-[#111216] border border-[#2C2C2C] rounded-xl p-6 mb-6">
       {/* Main Image */}
-      <div style={{
-        position: 'relative',
-        width: '100%',
-        height: '400px',
-        backgroundColor: '#121317',
-        borderRadius: '8px',
-        overflow: 'hidden',
-        marginBottom: '16px'
-      }}>
+      <div className="relative w-full h-[400px] bg-[#121317] rounded-lg overflow-hidden mb-4">
         {images && images.length > 0 ? (
           <img 
             src={images[selectedImage]?.url}
             alt={`Property image ${selectedImage + 1}`}
-            style={{
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover',
-              cursor: 'pointer'
-            }}
-            onClick={() => {
-              // TODO: Open lightbox/fullscreen view
-              window.open(images[selectedImage]?.url, '_blank');
-            }}
+            className="w-full h-full object-cover cursor-pointer"
+            onClick={() => window.open(images[selectedImage]?.url, '_blank')}
           />
         ) : (
-          <div style={{
-            width: '100%',
-            height: '100%',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: '#6D6041',
-            gap: '12px'
-          }}>
-            <div style={{ fontSize: '64px' }}>🏠</div>
-            <div style={{ fontSize: '14px' }}>No images available</div>
+          <div className="w-full h-full flex flex-col items-center justify-center text-[#6D6041] gap-3">
+            <div className="text-6xl">🏠</div>
+            <div className="text-sm">No images available</div>
           </div>
         )}
 
         {/* Overlays */}
         {verified && (
-          <div style={{
-            position: 'absolute',
-            top: '16px',
-            right: '16px',
-            backgroundColor: '#4CAF50',
-            color: '#fff',
-            padding: '8px 12px',
-            borderRadius: '8px',
-            fontSize: '12px',
-            fontWeight: 'bold',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
-          }}>
+          <div className="absolute top-4 right-4 bg-emerald-500 text-white px-3 py-2 rounded-lg text-xs font-bold shadow-[0_2px_8px_rgba(0,0,0,0.3)]">
             ✓ Verified
           </div>
         )}
 
         {isFractionalized && (
-          <div style={{
-            position: 'absolute',
-            top: '16px',
-            left: '16px',
-            backgroundColor: '#CAAB5B',
-            color: '#121317',
-            padding: '8px 12px',
-            borderRadius: '8px',
-            fontSize: '12px',
-            fontWeight: 'bold',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
-          }}>
+          <div className="absolute top-4 left-4 bg-[#CAAB5B] text-[#121317] px-3 py-2 rounded-lg text-xs font-bold shadow-[0_2px_8px_rgba(0,0,0,0.3)]">
             🔹 Fractional
           </div>
         )}
 
         {/* Image Counter */}
         {images && images.length > 1 && (
-          <div style={{
-            position: 'absolute',
-            bottom: '16px',
-            right: '16px',
-            backgroundColor: 'rgba(0,0,0,0.7)',
-            color: '#fff',
-            padding: '6px 12px',
-            borderRadius: '6px',
-            fontSize: '12px'
-          }}>
+          <div className="absolute bottom-4 right-4 bg-black/70 text-white px-3 py-1.5 rounded-md text-xs">
             {selectedImage + 1} / {images.length}
           </div>
         )}
@@ -447,38 +315,18 @@ function ImageGallery({ images, verified, isFractionalized }) {
 
       {/* Thumbnails */}
       {images && images.length > 1 && (
-        <div style={{
-          display: 'flex',
-          gap: '8px',
-          overflowX: 'auto',
-          paddingBottom: '4px'
-        }}>
+        <div className="flex gap-2 overflow-x-auto pb-1">
           {images.map((img, i) => (
             <img
               key={i}
               src={img.url}
               alt={`Thumbnail ${i + 1}`}
               onClick={() => setSelectedImage(i)}
-              style={{
-                width: '80px',
-                height: '80px',
-                objectFit: 'cover',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                border: selectedImage === i ? '2px solid #CAAB5B' : '2px solid #2C2C2C',
-                opacity: selectedImage === i ? 1 : 0.6,
-                transition: 'all 0.2s'
-              }}
-              onMouseEnter={(e) => {
-                if (selectedImage !== i) {
-                  e.currentTarget.style.opacity = '0.8';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (selectedImage !== i) {
-                  e.currentTarget.style.opacity = '0.6';
-                }
-              }}
+              className={`w-20 h-20 object-cover rounded-md cursor-pointer border-2 transition-all ${
+                selectedImage === i 
+                  ? 'border-[#CAAB5B] opacity-100' 
+                  : 'border-[#2C2C2C] opacity-60 hover:opacity-80'
+              }`}
             />
           ))}
         </div>
@@ -489,108 +337,47 @@ function ImageGallery({ images, verified, isFractionalized }) {
 
 function PropertyHeader({ metadata, asset, tokenId }) {
   return (
-    <div style={{
-      backgroundColor: '#111216',
-      border: '1px solid #2C2C2C',
-      borderRadius: '12px',
-      padding: '24px',
-      marginBottom: '24px'
-    }}>
-      <h1 style={{
-        color: '#E1E2E2',
-        fontSize: '28px',
-        fontWeight: 'bold',
-        margin: 0,
-        marginBottom: '12px'
-      }}>
+    <div className="bg-[#111216] border border-[#2C2C2C] rounded-xl p-6 mb-6">
+      <h1 className="text-[#E1E2E2] text-3xl font-bold m-0 mb-3">
         {metadata?.propertyDetails?.title || `Property #${tokenId}`}
       </h1>
       
-      <div style={{
-        display: 'flex',
-        gap: '12px',
-        flexWrap: 'wrap',
-        marginBottom: '16px'
-      }}>
+      <div className="flex gap-3 flex-wrap mb-4">
         {metadata?.propertyDetails?.location && (
-          <div style={{
-            color: '#CAAB5B',
-            fontSize: '14px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '4px'
-          }}>
+          <div className="text-[#CAAB5B] text-sm flex items-center gap-1">
             📍 {metadata.propertyDetails.location}
           </div>
         )}
         
         {metadata?.propertyDetails?.type && (
-          <span style={{
-            backgroundColor: '#2C2C2C',
-            color: '#E1E2E2',
-            padding: '4px 12px',
-            borderRadius: '4px',
-            fontSize: '12px'
-          }}>
+          <span className="bg-[#2C2C2C] text-[#E1E2E2] px-3 py-1 rounded text-xs">
             {metadata.propertyDetails.type}
           </span>
         )}
         
         {asset.verified && (
-          <span style={{
-            backgroundColor: '#4CAF50',
-            color: '#fff',
-            padding: '4px 12px',
-            borderRadius: '4px',
-            fontSize: '12px',
-            fontWeight: 'bold'
-          }}>
+          <span className="bg-emerald-500 text-white px-3 py-1 rounded text-xs font-bold">
             ✓ Admin Verified
           </span>
         )}
 
-        <span style={{
-          backgroundColor: '#2C2C2C',
-          color: '#6D6041',
-          padding: '4px 12px',
-          borderRadius: '4px',
-          fontSize: '12px'
-        }}>
+        <span className="bg-[#2C2C2C] text-[#6D6041] px-3 py-1 rounded text-xs">
           Token #{tokenId}
         </span>
       </div>
 
       {/* Seller Info */}
-      <div style={{
-        paddingTop: '16px',
-        borderTop: '1px solid #2C2C2C',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center'
-      }}>
-        <div style={{ color: '#6D6041', fontSize: '12px' }}>
-          Listed by
-        </div>
-        <div style={{
-          color: '#E1E2E2',
-          fontSize: '12px',
-          fontFamily: 'monospace'
-        }}>
+      <div className="pt-4 border-t border-[#2C2C2C] flex justify-between items-center">
+        <div className="text-[#6D6041] text-xs">Listed by</div>
+        <div className="text-[#E1E2E2] text-xs font-mono">
           {asset.seller.slice(0, 6)}...{asset.seller.slice(-4)}
         </div>
       </div>
 
       {metadata?.timestamp && (
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginTop: '8px'
-        }}>
-          <div style={{ color: '#6D6041', fontSize: '12px' }}>
-            Listed on
-          </div>
-          <div style={{ color: '#E1E2E2', fontSize: '12px' }}>
+        <div className="flex justify-between items-center mt-2">
+          <div className="text-[#6D6041] text-xs">Listed on</div>
+          <div className="text-[#E1E2E2] text-xs">
             {new Date(metadata.timestamp).toLocaleDateString('en-US', {
               year: 'numeric',
               month: 'long',
@@ -605,18 +392,9 @@ function PropertyHeader({ metadata, asset, tokenId }) {
 
 function TabbedContent({ activeTab, setActiveTab, metadata, asset, fractionalBuyers, netMonthlyIncome, annualROI }) {
   return (
-    <div style={{
-      backgroundColor: '#111216',
-      border: '1px solid #2C2C2C',
-      borderRadius: '12px',
-      overflow: 'hidden'
-    }}>
+    <div className="bg-[#111216] border border-[#2C2C2C] rounded-xl overflow-hidden">
       {/* Tab Navigation */}
-      <div style={{
-        display: 'flex',
-        borderBottom: '1px solid #2C2C2C',
-        overflowX: 'auto'
-      }}>
+      <div className="flex border-b border-[#2C2C2C] overflow-x-auto">
         <TabButton 
           label="Overview" 
           isActive={activeTab === 'overview'}
@@ -643,11 +421,8 @@ function TabbedContent({ activeTab, setActiveTab, metadata, asset, fractionalBuy
       </div>
 
       {/* Tab Content */}
-      <div style={{ padding: '24px' }}>
-        {activeTab === 'overview' && (
-          <OverviewTab metadata={metadata} />
-        )}
-
+      <div className="p-6">
+        {activeTab === 'overview' && <OverviewTab metadata={metadata} />}
         {activeTab === 'financials' && (
           <FinancialsTab 
             metadata={metadata}
@@ -655,11 +430,7 @@ function TabbedContent({ activeTab, setActiveTab, metadata, asset, fractionalBuy
             annualROI={annualROI}
           />
         )}
-
-        {activeTab === 'documents' && (
-          <DocumentsTab metadata={metadata} />
-        )}
-
+        {activeTab === 'documents' && <DocumentsTab metadata={metadata} />}
         {activeTab === 'investors' && asset.isFractionalized && (
           <InvestorsTab 
             fractionalBuyers={fractionalBuyers}
@@ -675,39 +446,15 @@ function TabButton({ label, isActive, onClick, badge }) {
   return (
     <button
       onClick={onClick}
-      style={{
-        flex: 1,
-        minWidth: 'fit-content',
-        padding: '16px 24px',
-        backgroundColor: isActive ? '#121317' : 'transparent',
-        color: isActive ? '#CAAB5B' : '#6D6041',
-        border: 'none',
-        borderBottom: isActive ? '2px solid #CAAB5B' : '2px solid transparent',
-        fontSize: '14px',
-        fontWeight: 'bold',
-        cursor: 'pointer',
-        transition: 'all 0.2s',
-        position: 'relative'
-      }}
+      className={`flex-1 min-w-fit px-6 py-4 border-0 border-b-2 text-sm font-bold cursor-pointer transition-all relative ${
+        isActive 
+          ? 'bg-[#121317] text-[#CAAB5B] border-b-[#CAAB5B]' 
+          : 'bg-transparent text-[#6D6041] border-b-transparent hover:text-[#CAAB5B]'
+      }`}
     >
       {label}
       {badge !== undefined && badge > 0 && (
-        <span style={{
-          position: 'absolute',
-          top: '8px',
-          right: '8px',
-          backgroundColor: '#CAAB5B',
-          color: '#121317',
-          borderRadius: '50%',
-          minWidth: '20px',
-          height: '20px',
-          fontSize: '11px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontWeight: 'bold',
-          padding: '0 6px'
-        }}>
+        <span className="absolute top-2 right-2 bg-[#CAAB5B] text-[#121317] rounded-full min-w-[20px] h-5 text-[11px] flex items-center justify-center font-bold px-1.5">
           {badge}
         </span>
       )}
@@ -718,35 +465,16 @@ function TabButton({ label, isActive, onClick, badge }) {
 function OverviewTab({ metadata }) {
   return (
     <div>
-      <h3 style={{ color: '#CAAB5B', marginBottom: '16px', fontSize: '18px' }}>
-        Property Description
-      </h3>
-      <p style={{ 
-        color: '#E1E2E2', 
-        lineHeight: '1.8',
-        fontSize: '15px',
-        marginBottom: '24px'
-      }}>
+      <h3 className="text-[#CAAB5B] mb-4 text-lg">Property Description</h3>
+      <p className="text-[#E1E2E2] leading-relaxed text-[15px] mb-6">
         {metadata?.propertyDetails?.description || 'No description available'}
       </p>
 
-      {/* Owner Information */}
       {metadata?.ownerInformation && (
         <>
-          <h3 style={{ color: '#CAAB5B', marginBottom: '16px', fontSize: '18px', marginTop: '32px' }}>
-            Owner Information
-          </h3>
-          <div style={{
-            backgroundColor: '#121317',
-            border: '1px solid #2C2C2C',
-            borderRadius: '8px',
-            padding: '16px'
-          }}>
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
-              gap: '16px'
-            }}>
+          <h3 className="text-[#CAAB5B] mb-4 text-lg mt-8">Owner Information</h3>
+          <div className="bg-[#121317] border border-[#2C2C2C] rounded-lg p-4">
+            <div className="grid grid-cols-2 gap-4">
               {metadata.ownerInformation.fullName && (
                 <InfoItem label="Full Name" value={metadata.ownerInformation.fullName} />
               )}
@@ -757,15 +485,7 @@ function OverviewTab({ metadata }) {
                 <InfoItem label="Phone" value={metadata.ownerInformation.phone} />
               )}
             </div>
-            <div style={{
-              marginTop: '12px',
-              padding: '12px',
-              backgroundColor: '#ff980020',
-              border: '1px solid #ff9800',
-              borderRadius: '6px',
-              color: '#ff9800',
-              fontSize: '12px'
-            }}>
+            <div className="mt-3 p-3 bg-orange-500/10 border border-orange-500 rounded-md text-orange-500 text-xs">
               ℹ️ Contact information is provided by the seller. Verify independently before transacting.
             </div>
           </div>
@@ -780,7 +500,7 @@ function FinancialsTab({ metadata, netMonthlyIncome, annualROI }) {
 
   if (!financials) {
     return (
-      <div style={{ color: '#6D6041', textAlign: 'center', padding: '40px' }}>
+      <div className="text-[#6D6041] text-center py-10">
         No financial information available
       </div>
     );
@@ -788,17 +508,9 @@ function FinancialsTab({ metadata, netMonthlyIncome, annualROI }) {
 
   return (
     <div>
-      <h3 style={{ color: '#CAAB5B', marginBottom: '16px', fontSize: '18px' }}>
-        Financial Details
-      </h3>
+      <h3 className="text-[#CAAB5B] mb-4 text-lg">Financial Details</h3>
 
-      {/* Investment Overview */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-        gap: '16px',
-        marginBottom: '24px'
-      }}>
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-4 mb-6">
         <StatCard 
           label="Purchase Price" 
           value={`$${parseFloat(financials.purchasePrice || 0).toLocaleString()}`}
@@ -810,55 +522,38 @@ function FinancialsTab({ metadata, netMonthlyIncome, annualROI }) {
         <StatCard 
           label="Potential Gain" 
           value={`${(((parseFloat(financials.tokenizationValue) - parseFloat(financials.purchasePrice)) / parseFloat(financials.purchasePrice)) * 100).toFixed(1)}%`}
-          color="#4CAF50"
+          color="text-emerald-500"
         />
       </div>
 
-      {/* Monthly Cash Flow */}
-      <h3 style={{ color: '#CAAB5B', marginBottom: '16px', fontSize: '18px', marginTop: '32px' }}>
-        Monthly Cash Flow
-      </h3>
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-        gap: '16px',
-        marginBottom: '24px'
-      }}>
+      <h3 className="text-[#CAAB5B] mb-4 text-lg mt-8">Monthly Cash Flow</h3>
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-4 mb-6">
         <StatCard 
           label="Monthly Revenue" 
           value={`$${parseFloat(financials.monthlyRevenue || 0).toLocaleString()}`}
-          color="#4CAF50"
+          color="text-emerald-500"
         />
         <StatCard 
           label="Monthly Expenses" 
           value={`$${parseFloat(financials.monthlyExpenses || 0).toLocaleString()}`}
-          color="#f44336"
+          color="text-red-500"
         />
         <StatCard 
           label="Net Monthly Income" 
           value={`$${netMonthlyIncome.toLocaleString()}`}
-          color={netMonthlyIncome >= 0 ? '#4CAF50' : '#f44336'}
+          color={netMonthlyIncome >= 0 ? 'text-emerald-500' : 'text-red-500'}
         />
         <StatCard 
           label="Annual ROI" 
           value={`${annualROI.toFixed(2)}%`}
-          color={annualROI >= 0 ? '#4CAF50' : '#f44336'}
+          color={annualROI >= 0 ? 'text-emerald-500' : 'text-red-500'}
         />
       </div>
 
-      {/* Warning if negative cash flow */}
       {netMonthlyIncome < 0 && (
-        <div style={{
-          backgroundColor: '#f4433620',
-          border: '1px solid #f44336',
-          borderRadius: '8px',
-          padding: '16px',
-          marginTop: '16px'
-        }}>
-          <div style={{ color: '#f44336', fontWeight: 'bold', marginBottom: '8px' }}>
-            ⚠️ Negative Cash Flow
-          </div>
-          <div style={{ color: '#E1E2E2', fontSize: '14px' }}>
+        <div className="bg-red-500/10 border border-red-500 rounded-lg p-4 mt-4">
+          <div className="text-red-500 font-bold mb-2">⚠️ Negative Cash Flow</div>
+          <div className="text-[#E1E2E2] text-sm">
             This property currently operates at a monthly loss of ${Math.abs(netMonthlyIncome).toLocaleString()}. 
             Ensure you understand the investment risks before proceeding.
           </div>
@@ -873,70 +568,34 @@ function DocumentsTab({ metadata }) {
 
   if (!documents || documents.length === 0) {
     return (
-      <div style={{
-        textAlign: 'center',
-        padding: '40px',
-        color: '#6D6041'
-      }}>
-        <div style={{ fontSize: '48px', marginBottom: '16px' }}>📄</div>
-        <div style={{ fontSize: '16px' }}>No documents available</div>
+      <div className="text-center py-10 text-[#6D6041]">
+        <div className="text-5xl mb-4">📄</div>
+        <div className="text-base">No documents available</div>
       </div>
     );
   }
 
   return (
     <div>
-      <h3 style={{ color: '#CAAB5B', marginBottom: '16px', fontSize: '18px' }}>
-        Legal Documents
-      </h3>
+      <h3 className="text-[#CAAB5B] mb-4 text-lg">Legal Documents</h3>
       
-      <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '12px'
-      }}>
+      <div className="flex flex-col gap-3">
         {documents.map((doc, i) => (
           <div
             key={i}
-            style={{
-              backgroundColor: '#121317',
-              border: '1px solid #2C2C2C',
-              borderRadius: '8px',
-              padding: '16px',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center'
-            }}
+            className="bg-[#121317] border border-[#2C2C2C] rounded-lg p-4 flex justify-between items-center"
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div style={{ fontSize: '24px' }}>📄</div>
+            <div className="flex items-center gap-3">
+              <div className="text-2xl">📄</div>
               <div>
-                <div style={{ 
-                  color: '#E1E2E2', 
-                  fontWeight: 'bold', 
-                  marginBottom: '4px',
-                  fontSize: '14px'
-                }}>
-                  {doc.name}
-                </div>
-                <div style={{ color: '#6D6041', fontSize: '12px' }}>
-                  Stored on IPFS
-                </div>
+                <div className="text-[#E1E2E2] font-bold mb-1 text-sm">{doc.name}</div>
+                <div className="text-[#6D6041] text-xs">Stored on IPFS</div>
               </div>
             </div>
-            <div style={{ display: 'flex', gap: '8px' }}>
+            <div className="flex gap-2">
               <button
                 onClick={() => window.open(doc.url, '_blank')}
-                style={{
-                  padding: '8px 16px',
-                  backgroundColor: '#CAAB5B',
-                  color: '#121317',
-                  border: 'none',
-                  borderRadius: '6px',
-                  fontSize: '12px',
-                  fontWeight: 'bold',
-                  cursor: 'pointer'
-                }}
+                className="py-2 px-4 bg-[#CAAB5B] text-[#121317] border-0 rounded-md text-xs font-bold cursor-pointer hover:opacity-90 transition-opacity"
               >
                 View
               </button>
@@ -947,16 +606,7 @@ function DocumentsTab({ metadata }) {
                   link.download = doc.name;
                   link.click();
                 }}
-                style={{
-                  padding: '8px 16px',
-                  backgroundColor: '#2C2C2C',
-                  color: '#E1E2E2',
-                  border: 'none',
-                  borderRadius: '6px',
-                  fontSize: '12px',
-                  fontWeight: 'bold',
-                  cursor: 'pointer'
-                }}
+                className="py-2 px-4 bg-[#2C2C2C] text-[#E1E2E2] border-0 rounded-md text-xs font-bold cursor-pointer hover:bg-[#3C3C3C] transition-colors"
               >
                 Download
               </button>
@@ -965,15 +615,7 @@ function DocumentsTab({ metadata }) {
         ))}
       </div>
 
-      <div style={{
-        marginTop: '16px',
-        padding: '12px',
-        backgroundColor: '#4CAF5020',
-        border: '1px solid #4CAF50',
-        borderRadius: '8px',
-        color: '#4CAF50',
-        fontSize: '12px'
-      }}>
+      <div className="mt-4 p-3 bg-emerald-500/10 border border-emerald-500 rounded-lg text-emerald-500 text-xs">
         🔒 All documents are securely stored on IPFS and verified by platform administrators.
       </div>
     </div>
@@ -983,107 +625,47 @@ function DocumentsTab({ metadata }) {
 function InvestorsTab({ fractionalBuyers, asset }) {
   if (!fractionalBuyers || fractionalBuyers.length === 0) {
     return (
-      <div style={{
-        textAlign: 'center',
-        padding: '40px',
-        color: '#6D6041'
-      }}>
-        <div style={{ fontSize: '48px', marginBottom: '16px' }}>👥</div>
-        <div style={{ fontSize: '16px', marginBottom: '8px' }}>No investors yet</div>
-        <div style={{ fontSize: '14px' }}>Be the first to invest in this property!</div>
+      <div className="text-center py-10 text-[#6D6041]">
+        <div className="text-5xl mb-4">👥</div>
+        <div className="text-base mb-2">No investors yet</div>
+        <div className="text-sm">Be the first to invest in this property!</div>
       </div>
     );
   }
 
   return (
     <div>
-      <h3 style={{ color: '#CAAB5B', marginBottom: '16px', fontSize: '18px' }}>
+      <h3 className="text-[#CAAB5B] mb-4 text-lg">
         Current Investors ({fractionalBuyers.length})
       </h3>
 
-      {/* Investment Summary */}
-      <div style={{
-        backgroundColor: '#121317',
-        border: '1px solid #2C2C2C',
-        borderRadius: '8px',
-        padding: '16px',
-        marginBottom: '24px',
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-        gap: '16px'
-      }}>
+      <div className="bg-[#121317] border border-[#2C2C2C] rounded-lg p-4 mb-6 grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-4">
         <div>
-          <div style={{ color: '#6D6041', fontSize: '11px', marginBottom: '4px' }}>
-            Total Investors
-          </div>
-          <div style={{ color: '#E1E2E2', fontSize: '20px', fontWeight: 'bold' }}>
-            {fractionalBuyers.length}
-          </div>
+          <div className="text-[#6D6041] text-[11px] mb-1">Total Investors</div>
+          <div className="text-[#E1E2E2] text-xl font-bold">{fractionalBuyers.length}</div>
         </div>
         <div>
-          <div style={{ color: '#6D6041', fontSize: '11px', marginBottom: '4px' }}>
-            Tokens Sold
-          </div>
-          <div style={{ color: '#4CAF50', fontSize: '20px', fontWeight: 'bold' }}>
+          <div className="text-[#6D6041] text-[11px] mb-1">Tokens Sold</div>
+          <div className="text-emerald-500 text-xl font-bold">
             {Number(asset.totalFractionalTokens) - Number(asset.remainingFractionalTokens)} / {Number(asset.totalFractionalTokens)}
           </div>
         </div>
         <div>
-          <div style={{ color: '#6D6041', fontSize: '11px', marginBottom: '4px' }}>
-            % Sold
-          </div>
-          <div style={{ color: '#CAAB5B', fontSize: '20px', fontWeight: 'bold' }}>
+          <div className="text-[#6D6041] text-[11px] mb-1">% Sold</div>
+          <div className="text-[#CAAB5B] text-xl font-bold">
             {(((Number(asset.totalFractionalTokens) - Number(asset.remainingFractionalTokens)) / Number(asset.totalFractionalTokens)) * 100).toFixed(1)}%
           </div>
         </div>
       </div>
 
-      {/* Investors Table */}
-      <div style={{
-        backgroundColor: '#121317',
-        border: '1px solid #2C2C2C',
-        borderRadius: '8px',
-        overflow: 'hidden'
-      }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+      <div className="bg-[#121317] border border-[#2C2C2C] rounded-lg overflow-hidden">
+        <table className="w-full border-collapse">
           <thead>
-            <tr style={{ backgroundColor: '#0D0E11', borderBottom: '1px solid #2C2C2C' }}>
-              <th style={{ 
-                color: '#6D6041', 
-                fontSize: '12px', 
-                textAlign: 'left', 
-                padding: '12px 16px',
-                fontWeight: 'bold'
-              }}>
-                Rank
-              </th>
-              <th style={{ 
-                color: '#6D6041', 
-                fontSize: '12px', 
-                textAlign: 'left', 
-                padding: '12px 16px',
-                fontWeight: 'bold'
-              }}>
-                Investor
-              </th>
-              <th style={{ 
-                color: '#6D6041', 
-                fontSize: '12px', 
-                textAlign: 'right', 
-                padding: '12px 16px',
-                fontWeight: 'bold'
-              }}>
-                Tokens
-              </th>
-              <th style={{ 
-                color: '#6D6041', 
-                fontSize: '12px', 
-                textAlign: 'right', 
-                padding: '12px 16px',
-                fontWeight: 'bold'
-              }}>
-                Ownership
-              </th>
+            <tr className="bg-[#0D0E11] border-b border-[#2C2C2C]">
+              <th className="text-[#6D6041] text-xs text-left py-3 px-4 font-bold">Rank</th>
+              <th className="text-[#6D6041] text-xs text-left py-3 px-4 font-bold">Investor</th>
+              <th className="text-[#6D6041] text-xs text-right py-3 px-4 font-bold">Tokens</th>
+              <th className="text-[#6D6041] text-xs text-right py-3 px-4 font-bold">Ownership</th>
             </tr>
           </thead>
           <tbody>
@@ -1092,43 +674,16 @@ function InvestorsTab({ fractionalBuyers, asset }) {
               .map((buyer, i) => (
                 <tr 
                   key={i} 
-                  style={{ 
-                    borderBottom: i < fractionalBuyers.length - 1 ? '1px solid #2C2C2C' : 'none'
-                  }}
+                  className={i < fractionalBuyers.length - 1 ? 'border-b border-[#2C2C2C]' : ''}
                 >
-                  <td style={{ 
-                    color: '#E1E2E2', 
-                    padding: '12px 16px',
-                    fontSize: '14px',
-                    fontWeight: 'bold'
-                  }}>
-                    #{i + 1}
-                  </td>
-                  <td style={{ 
-                    color: '#E1E2E2', 
-                    padding: '12px 16px', 
-                    fontFamily: 'monospace', 
-                    fontSize: '13px'
-                  }}>
+                  <td className="text-[#E1E2E2] py-3 px-4 text-sm font-bold">#{i + 1}</td>
+                  <td className="text-[#E1E2E2] py-3 px-4 font-mono text-[13px]">
                     {buyer.buyer.slice(0, 6)}...{buyer.buyer.slice(-4)}
                   </td>
-                  <td style={{ 
-                    color: '#E1E2E2', 
-                    textAlign: 'right', 
-                    padding: '12px 16px',
-                    fontSize: '14px',
-                    fontWeight: 'bold'
-                  }}>
+                  <td className="text-[#E1E2E2] text-right py-3 px-4 text-sm font-bold">
                     {buyer.numTokens.toString()}
                   </td>
-                  <td style={{ 
-                    color: '#4CAF50', 
-                    textAlign: 'right', 
-                    padding: '12px 16px', 
-                    fontWeight: 'bold',
-                    fontSize: '14px'
-                  }}>
-                    
+                  <td className="text-emerald-500 text-right py-3 px-4 font-bold text-sm">
                     {(Number(buyer.percentage) / 1e16).toFixed(2)}%
                   </td>
                 </tr>
@@ -1137,15 +692,7 @@ function InvestorsTab({ fractionalBuyers, asset }) {
         </table>
       </div>
 
-      <div style={{
-        marginTop: '16px',
-        padding: '12px',
-        backgroundColor: '#CAAB5B20',
-        border: '1px solid #CAAB5B',
-        borderRadius: '8px',
-        color: '#CAAB5B',
-        fontSize: '12px'
-      }}>
+      <div className="mt-4 p-3 bg-[#CAAB5B]/10 border border-[#CAAB5B] rounded-lg text-[#CAAB5B] text-xs">
         ℹ️ Investor rankings are based on number of tokens held. All data is public on the blockchain.
       </div>
     </div>
@@ -1165,7 +712,6 @@ function PurchaseWidget({
   isSuccess,
   transactionError
 }) {
-  // Check if asset is available for purchase
   const isAvailable = (() => {
     if (!asset.verified) return false;
     if (asset.sold && !asset.isFractionalized) return false;
@@ -1174,61 +720,25 @@ function PurchaseWidget({
   })();
 
   return (
-    <div style={{
-      backgroundColor: '#111216',
-      border: '1px solid #2C2C2C',
-      borderRadius: '12px',
-      padding: '24px'
-    }}>
+    <div className="bg-[#111216] border border-[#2C2C2C] rounded-xl p-6">
       {/* Token ID Badge */}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: '20px',
-        paddingBottom: '16px',
-        borderBottom: '1px solid #2C2C2C'
-      }}>
-        <div style={{
-          backgroundColor: '#CAAB5B',
-          color: '#121317',
-          padding: '6px 12px',
-          borderRadius: '6px',
-          fontSize: '14px',
-          fontWeight: 'bold'
-        }}>
+      <div className="flex justify-between items-center mb-5 pb-4 border-b border-[#2C2C2C]">
+        <div className="bg-[#CAAB5B] text-[#121317] px-3 py-1.5 rounded-md text-sm font-bold">
           #{tokenId}
         </div>
         {asset.verified && (
-          <div style={{
-            backgroundColor: '#4CAF50',
-            color: '#fff',
-            padding: '6px 12px',
-            borderRadius: '6px',
-            fontSize: '12px',
-            fontWeight: 'bold'
-          }}>
+          <div className="bg-emerald-500 text-white px-3 py-1.5 rounded-md text-xs font-bold">
             ✓ Verified
           </div>
         )}
       </div>
 
       {/* Price Display */}
-      <div style={{ marginBottom: '20px' }}>
-        <div style={{
-          color: '#6D6041',
-          fontSize: '12px',
-          marginBottom: '8px',
-          textTransform: 'uppercase',
-          letterSpacing: '0.5px'
-        }}>
+      <div className="mb-5">
+        <div className="text-[#6D6041] text-xs mb-2 uppercase tracking-wider">
           {asset.isFractionalized ? 'Price Per Token' : 'Total Price'}
         </div>
-        <div style={{
-          color: '#CAAB5B',
-          fontSize: '32px',
-          fontWeight: 'bold'
-        }}>
+        <div className="text-[#CAAB5B] text-[32px] font-bold">
           {asset.isFractionalized 
             ? formatUnits(asset.pricePerFractionalToken, 6)
             : formatUnits(asset.price, 6)} USDC
@@ -1237,69 +747,39 @@ function PurchaseWidget({
 
       {/* Fractional Info */}
       {asset.isFractionalized && (
-        <div style={{
-          backgroundColor: '#121317',
-          border: '1px solid #2C2C2C',
-          borderRadius: '8px',
-          padding: '16px',
-          marginBottom: '20px'
-        }}>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: '12px',
-            marginBottom: '16px'
-          }}>
+        <div className="bg-[#121317] border border-[#2C2C2C] rounded-lg p-4 mb-5">
+          <div className="grid grid-cols-2 gap-3 mb-4">
             <div>
-              <div style={{ color: '#6D6041', fontSize: '11px', marginBottom: '4px' }}>
-                Total Tokens
-              </div>
-              <div style={{ color: '#E1E2E2', fontSize: '18px', fontWeight: 'bold' }}>
+              <div className="text-[#6D6041] text-[11px] mb-1">Total Tokens</div>
+              <div className="text-[#E1E2E2] text-lg font-bold">
                 {asset.totalFractionalTokens?.toString() || '0'}
               </div>
             </div>
             <div>
-              <div style={{ color: '#6D6041', fontSize: '11px', marginBottom: '4px' }}>
-                Available
-              </div>
-              <div style={{ color: '#4CAF50', fontSize: '18px', fontWeight: 'bold' }}>
+              <div className="text-[#6D6041] text-[11px] mb-1">Available</div>
+              <div className="text-emerald-500 text-lg font-bold">
                 {asset.remainingFractionalTokens?.toString() || '0'}
               </div>
             </div>
           </div>
 
           {/* Progress Bar */}
-          <div style={{
-            backgroundColor: '#2C2C2C',
-            height: '8px',
-            borderRadius: '4px',
-            overflow: 'hidden',
-            marginBottom: '8px'
-          }}>
-            <div style={{
-              backgroundColor: '#4CAF50',
-              height: '100%',
-              width: `${((Number(asset.totalFractionalTokens) - Number(asset.remainingFractionalTokens)) / Number(asset.totalFractionalTokens)) * 100}%`,
-              transition: 'width 0.3s'
-            }} />
+          <div className="bg-[#2C2C2C] h-2 rounded overflow-hidden mb-2">
+            <div 
+              className="bg-emerald-500 h-full transition-all duration-300"
+              style={{
+                width: `${((Number(asset.totalFractionalTokens) - Number(asset.remainingFractionalTokens)) / Number(asset.totalFractionalTokens)) * 100}%`
+              }}
+            />
           </div>
-          <div style={{color: '#6D6041',
-            fontSize: '11px',
-            textAlign: 'center'
-          }}>
+          <div className="text-[#6D6041] text-[11px] text-center">
             {((Number(asset.totalFractionalTokens) - Number(asset.remainingFractionalTokens)) / Number(asset.totalFractionalTokens) * 100).toFixed(1)}% Sold
           </div>
 
           {/* Token Input */}
           {isAvailable && (
-            <div style={{ marginTop: '16px' }}>
-              <label style={{
-                color: '#6D6041',
-                fontSize: '12px',
-                display: 'block',
-                marginBottom: '8px',
-                fontWeight: 'bold'
-              }}>
+            <div className="mt-4">
+              <label className="text-[#6D6041] text-xs block mb-2 font-bold">
                 Tokens to Purchase
               </label>
               <input
@@ -1309,43 +789,19 @@ function PurchaseWidget({
                 min="1"
                 max={asset.remainingFractionalTokens?.toString() || '0'}
                 placeholder="Enter amount"
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  backgroundColor: '#111216',
-                  border: '1px solid #2C2C2C',
-                  borderRadius: '8px',
-                  color: '#E1E2E2',
-                  fontSize: '14px'
-                }}
+                className="w-full p-3 bg-[#111216] border border-[#2C2C2C] rounded-lg text-[#E1E2E2] text-sm placeholder:text-[#6D6041] focus:outline-none focus:border-[#CAAB5B] transition-colors"
               />
               {fractionalAmount && Number(fractionalAmount) > 0 && (
-                <div style={{
-                  marginTop: '12px',
-                  padding: '12px',
-                  backgroundColor: '#CAAB5B20',
-                  borderRadius: '6px'
-                }}>
-                  <div style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    marginBottom: '6px'
-                  }}>
-                    <span style={{ color: '#6D6041', fontSize: '12px' }}>
-                      Your Investment:
-                    </span>
-                    <span style={{ color: '#CAAB5B', fontSize: '14px', fontWeight: 'bold' }}>
+                <div className="mt-3 p-3 bg-[#CAAB5B]/10 rounded-md">
+                  <div className="flex justify-between mb-1.5">
+                    <span className="text-[#6D6041] text-xs">Your Investment:</span>
+                    <span className="text-[#CAAB5B] text-sm font-bold">
                       {formatUnits(BigInt(fractionalAmount || '0') * asset.pricePerFractionalToken, 6)} USDC
                     </span>
                   </div>
-                  <div style={{
-                    display: 'flex',
-                    justifyContent: 'space-between'
-                  }}>
-                    <span style={{ color: '#6D6041', fontSize: '12px' }}>
-                      Ownership:
-                    </span>
-                    <span style={{ color: '#4CAF50', fontSize: '14px', fontWeight: 'bold' }}>
+                  <div className="flex justify-between">
+                    <span className="text-[#6D6041] text-xs">Ownership:</span>
+                    <span className="text-emerald-500 text-sm font-bold">
                       {((Number(fractionalAmount) / Number(asset.totalFractionalTokens)) * 100).toFixed(2)}%
                     </span>
                   </div>
@@ -1357,76 +813,28 @@ function PurchaseWidget({
       )}
 
       {/* Seller Info */}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        paddingTop: '16px',
-        paddingBottom: '16px',
-        borderTop: '1px solid #2C2C2C',
-        borderBottom: '1px solid #2C2C2C',
-        marginBottom: '20px'
-      }}>
-        <div style={{ color: '#6D6041', fontSize: '12px' }}>
-          Seller
-        </div>
-        <div style={{
-          color: '#E1E2E2',
-          fontSize: '12px',
-          fontFamily: 'monospace'
-        }}>
+      <div className="flex justify-between pt-4 pb-4 border-t border-[#2C2C2C] border-b mb-5">
+        <div className="text-[#6D6041] text-xs">Seller</div>
+        <div className="text-[#E1E2E2] text-xs font-mono">
           {asset.seller.slice(0, 6)}...{asset.seller.slice(-4)}
         </div>
       </div>
 
       {/* Status-based Actions */}
       {!isConnected ? (
-        <div style={{
-          backgroundColor: '#ff980020',
-          border: '1px solid #ff9800',
-          borderRadius: '8px',
-          padding: '16px',
-          textAlign: 'center',
-          color: '#ff9800',
-          fontSize: '14px'
-        }}>
+        <div className="bg-orange-500/10 border border-orange-500 rounded-lg p-4 text-center text-orange-500 text-sm">
           🔒 Connect your wallet to purchase
         </div>
       ) : asset.sold && !asset.isFractionalized ? (
-        <div style={{
-          backgroundColor: '#6D604120',
-          border: '1px solid #6D6041',
-          borderRadius: '8px',
-          padding: '16px',
-          textAlign: 'center',
-          color: '#6D6041',
-          fontSize: '14px',
-          fontWeight: 'bold'
-        }}>
+        <div className="bg-[#6D6041]/10 border border-[#6D6041] rounded-lg p-4 text-center text-[#6D6041] text-sm font-bold">
           ✓ Property Sold
         </div>
       ) : !asset.verified ? (
-        <div style={{
-          backgroundColor: '#ff980020',
-          border: '1px solid #ff9800',
-          borderRadius: '8px',
-          padding: '16px',
-          textAlign: 'center',
-          color: '#ff9800',
-          fontSize: '14px'
-        }}>
+        <div className="bg-orange-500/10 border border-orange-500 rounded-lg p-4 text-center text-orange-500 text-sm">
           ⏳ Pending Admin Verification
         </div>
       ) : asset.isFractionalized && Number(asset.remainingFractionalTokens) === 0 ? (
-        <div style={{
-          backgroundColor: '#6D604120',
-          border: '1px solid #6D6041',
-          borderRadius: '8px',
-          padding: '16px',
-          textAlign: 'center',
-          color: '#6D6041',
-          fontSize: '14px',
-          fontWeight: 'bold'
-        }}>
+        <div className="bg-[#6D6041]/10 border border-[#6D6041] rounded-lg p-4 text-center text-[#6D6041] text-sm font-bold">
           ✓ All Tokens Sold
         </div>
       ) : (
@@ -1442,29 +850,7 @@ function PurchaseWidget({
               isConfirming || 
               (asset.isFractionalized && (!fractionalAmount || Number(fractionalAmount) <= 0 || Number(fractionalAmount) > Number(asset.remainingFractionalTokens)))
             }
-            style={{
-              width: '100%',
-              padding: '16px',
-              backgroundColor: isPending || isConfirming ? '#2C2C2C' : '#4CAF50',
-              color: isPending || isConfirming ? '#6D6041' : '#fff',
-              border: 'none',
-              borderRadius: '8px',
-              fontSize: '16px',
-              fontWeight: 'bold',
-              cursor: isPending || isConfirming || (asset.isFractionalized && (!fractionalAmount || Number(fractionalAmount) <= 0)) ? 'not-allowed' : 'pointer',
-              transition: 'opacity 0.2s',
-              marginBottom: '12px'
-            }}
-            onMouseEnter={(e) => {
-              if (!isPending && !isConfirming && (asset.isFractionalized ? fractionalAmount && Number(fractionalAmount) > 0 : true)) {
-                e.currentTarget.style.opacity = '0.9';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!isPending && !isConfirming) {
-                e.currentTarget.style.opacity = '1';
-              }
-            }}
+            className="w-full py-4 bg-emerald-500 text-white border-0 rounded-lg text-base font-bold cursor-pointer transition-opacity mb-3 disabled:bg-[#2C2C2C] disabled:text-[#6D6041] disabled:cursor-not-allowed hover:opacity-90"
           >
             {isPending 
               ? 'Confirm in wallet...' 
@@ -1481,24 +867,7 @@ function PurchaseWidget({
               navigator.clipboard.writeText(window.location.href);
               alert('Property link copied to clipboard!');
             }}
-            style={{
-              width: '100%',
-              padding: '12px',
-              backgroundColor: 'transparent',
-              color: '#CAAB5B',
-              border: '1px solid #CAAB5B',
-              borderRadius: '8px',
-              fontSize: '14px',
-              fontWeight: 'bold',
-              cursor: 'pointer',
-              transition: 'all 0.2s'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#CAAB5B20';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'transparent';
-            }}
+            className="w-full py-3 bg-transparent text-[#CAAB5B] border border-[#CAAB5B] rounded-lg text-sm font-bold cursor-pointer transition-all hover:bg-[#CAAB5B]/10"
           >
             🔗 Share Property
           </button>
@@ -1507,33 +876,19 @@ function PurchaseWidget({
 
       {/* Transaction Status */}
       {hash && (
-        <div style={{
-          marginTop: '20px',
-          padding: '12px',
-          backgroundColor: '#121317',
-          border: '1px solid #2C2C2C',
-          borderRadius: '8px',
-          fontSize: '12px'
-        }}>
+        <div className="mt-5 p-3 bg-[#121317] border border-[#2C2C2C] rounded-lg text-xs">
           {isConfirming && (
-            <div style={{ color: '#ff9800', marginBottom: '8px', fontWeight: 'bold' }}>
+            <div className="text-orange-500 mb-2 font-bold">
               ⏳ Transaction confirming...
             </div>
           )}
           {isSuccess && (
-            <div style={{ color: '#4CAF50', marginBottom: '8px', fontWeight: 'bold' }}>
+            <div className="text-emerald-500 mb-2 font-bold">
               ✓ Transaction completed successfully!
             </div>
           )}
-          <div style={{ color: '#6D6041', marginBottom: '4px' }}>
-            Transaction Hash:
-          </div>
-          <div style={{
-            color: '#E1E2E2',
-            fontFamily: 'monospace',
-            wordBreak: 'break-all',
-            fontSize: '10px'
-          }}>
+          <div className="text-[#6D6041] mb-1">Transaction Hash:</div>
+          <div className="text-[#E1E2E2] font-mono break-all text-[10px]">
             {hash}
           </div>
         </div>
@@ -1541,18 +896,8 @@ function PurchaseWidget({
 
       {/* Error Display */}
       {transactionError && (
-        <div style={{
-          marginTop: '20px',
-          padding: '12px',
-          backgroundColor: '#f4433620',
-          border: '1px solid #f44336',
-          borderRadius: '8px',
-          color: '#f44336',
-          fontSize: '12px'
-        }}>
-          <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
-            ⚠️ Transaction Error
-          </div>
+        <div className="mt-5 p-3 bg-red-500/10 border border-red-500 rounded-lg text-red-500 text-xs">
+          <div className="font-bold mb-1">⚠️ Transaction Error</div>
           {transactionError.message}
         </div>
       )}
@@ -1564,44 +909,19 @@ function PurchaseWidget({
 function InfoItem({ label, value }) {
   return (
     <div>
-      <div style={{ 
-        color: '#6D6041', 
-        fontSize: '11px', 
-        marginBottom: '4px',
-        textTransform: 'uppercase',
-        letterSpacing: '0.5px'
-      }}>
-        {label}
-      </div>
-      <div style={{ color: '#E1E2E2', fontSize: '14px' }}>
-        {value}
-      </div>
+      <div className="text-[#6D6041] text-[11px] mb-1 uppercase tracking-wider">{label}</div>
+      <div className="text-[#E1E2E2] text-sm">{value}</div>
     </div>
   );
 }
 
-function StatCard({ label, value, color = '#E1E2E2' }) {
+function StatCard({ label, value, color = 'text-[#E1E2E2]' }) {
   return (
-    <div style={{
-      backgroundColor: '#121317',
-      border: '1px solid #2C2C2C',
-      borderRadius: '8px',
-      padding: '16px'
-    }}>
-      <div style={{
-        color: '#6D6041',
-        fontSize: '11px',
-        marginBottom: '8px',
-        textTransform: 'uppercase',
-        letterSpacing: '0.5px'
-      }}>
+    <div className="bg-[#121317] border border-[#2C2C2C] rounded-lg p-4">
+      <div className="text-[#6D6041] text-[11px] mb-2 uppercase tracking-wider">
         {label}
       </div>
-      <div style={{
-        color: color,
-        fontSize: '20px',
-        fontWeight: 'bold'
-      }}>
+      <div className={`${color} text-xl font-bold`}>
         {value}
       </div>
     </div>

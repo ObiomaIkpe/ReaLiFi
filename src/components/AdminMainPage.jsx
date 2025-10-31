@@ -79,6 +79,12 @@ export const AdminDashboard = () => {
     }
   }, [isPending, isConfirming, hash, refetchAssets]);
 
+  useEffect(() => {
+  if (isConnected && isAdmin === false && !isOwner) {
+    navigate('/');
+  }
+}, [isAdmin, isOwner, isConnected, navigate]);
+
   const showNotification = (message, type = 'success') => {
     setNotification({ message, type });
     setTimeout(() => setNotification(null), 5000);
@@ -280,7 +286,20 @@ export const AdminDashboard = () => {
     { id: 'ownership', label: 'Ownership', icon: Key, adminOnly: false },
   ];
 
+  // Show loading while checking permissions
+if (isConnected && (isAdmin === undefined || ownerAddress === undefined)) {
   return (
+    <div className="min-h-screen bg-[#121317] flex items-center justify-center">
+      <div className="text-center">
+        <RefreshCw className="w-12 h-12 text-[#CAAB5B] animate-spin mx-auto mb-4" />
+        <p className="text-[#E1E2E2] text-lg">Verifying permissions...</p>
+      </div>
+    </div>
+  );
+}
+
+  return (
+    
     <div className="min-h-screen bg-[#121317]">
       {/* Notification */}
       {notification && (
@@ -291,6 +310,8 @@ export const AdminDashboard = () => {
           <span className="text-[#E1E2E2]">{notification.message}</span>
         </div>
       )}
+
+      
 
       {/* Header */}
       <div className="bg-[#111216] border-b border-[#2C2C2C] shadow-[0_4px_15px_rgba(0,0,0,0.3)]">

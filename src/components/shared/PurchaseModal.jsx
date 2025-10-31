@@ -20,190 +20,86 @@ export function PurchaseModal({
   const hasEnoughBalance = usdcBalance && BigInt(usdcBalance.toString()) >= totalPrice;
 
   return (
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.8)',
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      zIndex: 1000,
-      padding: '20px'
-    }}>
-      <div style={{
-        backgroundColor: '#111216',
-        border: '1px solid #2C2C2C',
-        borderRadius: '16px',
-        padding: '32px',
-        maxWidth: '500px',
-        width: '100%',
-        maxHeight: '90vh',
-        overflowY: 'auto'
-      }}>
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '24px'
-        }}>
-          <h2 style={{
-            color: '#4CAF50',
-            fontSize: '24px',
-            fontWeight: 'bold',
-            margin: 0
-          }}>
+    <div className="fixed inset-0 bg-black/80 flex justify-center items-center z-[1000] p-5">
+      <div className="bg-[#111216] border border-[#2C2C2C] rounded-2xl p-8 max-w-[500px] w-full max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-emerald-500 text-2xl font-bold m-0">
             {purchaseType === 'whole' ? 'Purchase Property' : 'Buy Fractional Tokens'}
           </h2>
           <button
             onClick={onClose}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: '#6D6041',
-              fontSize: '24px',
-              cursor: 'pointer',
-              padding: '0',
-              width: '32px',
-              height: '32px'
-            }}
+            className="bg-transparent border-0 text-[#6D6041] text-2xl cursor-pointer p-0 w-8 h-8 hover:text-emerald-500 transition-colors"
           >
             ×
           </button>
         </div>
 
-        <div style={{
-          backgroundColor: '#121317',
-          border: '1px solid #2C2C2C',
-          borderRadius: '12px',
-          padding: '20px',
-          marginBottom: '24px'
-        }}>
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            marginBottom: '12px'
-          }}>
-            <span style={{ color: '#6D6041', fontSize: '14px' }}>Token ID</span>
-            <span style={{ color: '#E1E2E2', fontSize: '14px', fontWeight: 'bold' }}>
+        <div className="bg-[#121317] border border-[#2C2C2C] rounded-xl p-5 mb-6">
+          <div className="flex justify-between mb-3">
+            <span className="text-[#6D6041] text-sm">Token ID</span>
+            <span className="text-[#E1E2E2] text-sm font-bold">
               #{asset.tokenId.toString()}
             </span>
           </div>
           {purchaseType === 'fractional' && (
             <>
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                marginBottom: '12px'
-              }}>
-                <span style={{ color: '#6D6041', fontSize: '14px' }}>Tokens to Buy</span>
-                <span style={{ color: '#E1E2E2', fontSize: '14px', fontWeight: 'bold' }}>
+              <div className="flex justify-between mb-3">
+                <span className="text-[#6D6041] text-sm">Tokens to Buy</span>
+                <span className="text-[#E1E2E2] text-sm font-bold">
                   {fractionalAmount}
                 </span>
               </div>
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                marginBottom: '12px'
-              }}>
-                <span style={{ color: '#6D6041', fontSize: '14px' }}>Price per Token</span>
-                <span style={{ color: '#E1E2E2', fontSize: '14px', fontWeight: 'bold' }}>
+              <div className="flex justify-between mb-3">
+                <span className="text-[#6D6041] text-sm">Price per Token</span>
+                <span className="text-[#E1E2E2] text-sm font-bold">
                   {formatUnits(asset.pricePerFractionalToken, 6)} USDC
                 </span>
               </div>
             </>
           )}
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            paddingTop: '12px',
-            borderTop: '1px solid #2C2C2C'
-          }}>
-            <span style={{ color: '#6D6041', fontSize: '14px' }}>Total Price</span>
-            <span style={{ color: '#CAAB5B', fontSize: '18px', fontWeight: 'bold' }}>
+          <div className="flex justify-between pt-3 border-t border-[#2C2C2C]">
+            <span className="text-[#6D6041] text-sm">Total Price</span>
+            <span className="text-[#CAAB5B] text-lg font-bold">
               {formatUnits(totalPrice, 6)} USDC
             </span>
           </div>
         </div>
 
-        <div style={{
-          backgroundColor: hasEnoughBalance ? '#4CAF5020' : '#f4433620',
-          border: `1px solid ${hasEnoughBalance ? '#4CAF50' : '#f44336'}`,
-          borderRadius: '12px',
-          padding: '16px',
-          marginBottom: '24px',
-          fontSize: '14px',
-          color: '#E1E2E2'
-        }}>
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            marginBottom: '8px'
-          }}>
-            <span style={{ color: '#6D6041' }}>Your Balance:</span>
-            <span style={{ fontWeight: 'bold' }}>
+        <div className={`${hasEnoughBalance ? 'bg-emerald-500/10 border-emerald-500' : 'bg-red-500/10 border-red-500'} border rounded-xl p-4 mb-6 text-sm text-[#E1E2E2]`}>
+          <div className="flex justify-between mb-2">
+            <span className="text-[#6D6041]">Your Balance:</span>
+            <span className="font-bold">
               {usdcBalance ? formatUnits(usdcBalance, 6) : '0'} USDC
             </span>
           </div>
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between'
-          }}>
-            <span style={{ color: '#6D6041' }}>Required:</span>
-            <span style={{ fontWeight: 'bold' }}>
+          <div className="flex justify-between">
+            <span className="text-[#6D6041]">Required:</span>
+            <span className="font-bold">
               {formatUnits(totalPrice, 6)} USDC
             </span>
           </div>
           {!hasEnoughBalance && (
-            <div style={{
-              marginTop: '12px',
-              color: '#f44336',
-              fontWeight: 'bold',
-              fontSize: '12px'
-            }}>
+            <div className="mt-3 text-red-500 font-bold text-xs">
               ⚠️ Insufficient USDC balance. Please mint more USDC.
             </div>
           )}
         </div>
 
         {needsApproval && hasEnoughBalance && (
-          <div style={{
-            backgroundColor: '#ff980020',
-            border: '1px solid #ff9800',
-            borderRadius: '12px',
-            padding: '16px',
-            marginBottom: '24px',
-            fontSize: '14px',
-            color: '#E1E2E2'
-          }}>
-            <div style={{ fontWeight: 'bold', marginBottom: '8px', color: '#ff9800' }}>
+          <div className="bg-orange-500/10 border border-orange-500 rounded-xl p-4 mb-6 text-sm text-[#E1E2E2]">
+            <div className="font-bold mb-2 text-orange-500">
               ⚠️ Approval Required
             </div>
             You need to approve the marketplace contract to spend your USDC before purchasing.
           </div>
         )}
 
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: needsApproval && hasEnoughBalance ? '1fr' : '1fr 1fr',
-          gap: '12px'
-        }}>
+        <div className={`grid gap-3 ${needsApproval && hasEnoughBalance ? 'grid-cols-1' : 'grid-cols-2'}`}>
           {(!needsApproval || !hasEnoughBalance) && (
             <button
               onClick={onClose}
               disabled={isPending || isConfirming}
-              style={{
-                padding: '14px',
-                backgroundColor: '#2C2C2C',
-                color: '#E1E2E2',
-                border: 'none',
-                borderRadius: '12px',
-                fontSize: '14px',
-                fontWeight: 'bold',
-                cursor: isPending || isConfirming ? 'not-allowed' : 'pointer',
-              }}
+              className="py-3.5 px-4 bg-[#2C2C2C] text-[#E1E2E2] border-0 rounded-xl text-sm font-bold cursor-pointer hover:bg-[#3C3C3C] transition-colors disabled:cursor-not-allowed disabled:opacity-50"
             >
               Cancel
             </button>
@@ -212,16 +108,7 @@ export function PurchaseModal({
             <button
               onClick={() => onApprove(totalPrice)}
               disabled={isPending || isConfirming}
-              style={{
-                padding: '14px',
-                backgroundColor: isPending || isConfirming ? '#2C2C2C' : '#ff9800',
-                color: isPending || isConfirming ? '#6D6041' : '#fff',
-                border: 'none',
-                borderRadius: '12px',
-                fontSize: '14px',
-                fontWeight: 'bold',
-                cursor: isPending || isConfirming ? 'not-allowed' : 'pointer',
-              }}
+              className="py-3.5 px-4 bg-orange-500 text-white border-0 rounded-xl text-sm font-bold cursor-pointer hover:bg-orange-600 transition-colors disabled:bg-[#2C2C2C] disabled:text-[#6D6041] disabled:cursor-not-allowed"
             >
               {isPending ? 'Confirm in wallet...' : isConfirming ? 'Approving...' : '1. Approve USDC'}
             </button>
@@ -229,16 +116,7 @@ export function PurchaseModal({
             <button
               onClick={onPurchase}
               disabled={isPending || isConfirming || !hasEnoughBalance}
-              style={{
-                padding: '14px',
-                backgroundColor: isPending || isConfirming || !hasEnoughBalance ? '#2C2C2C' : '#4CAF50',
-                color: isPending || isConfirming || !hasEnoughBalance ? '#6D6041' : '#fff',
-                border: 'none',
-                borderRadius: '12px',
-                fontSize: '14px',
-                fontWeight: 'bold',
-                cursor: isPending || isConfirming || !hasEnoughBalance ? 'not-allowed' : 'pointer',
-              }}
+              className="py-3.5 px-4 bg-emerald-500 text-white border-0 rounded-xl text-sm font-bold cursor-pointer hover:bg-emerald-600 transition-colors disabled:bg-[#2C2C2C] disabled:text-[#6D6041] disabled:cursor-not-allowed"
             >
               {isPending ? 'Confirm in wallet...' : isConfirming ? 'Processing...' : needsApproval ? 'Approve First' : '2. Purchase'}
             </button>

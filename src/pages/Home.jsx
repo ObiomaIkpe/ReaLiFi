@@ -1,4 +1,3 @@
-// src/components/marketplace/MarketplacePage.jsx
 import { useState } from 'react';
 import { useReadContract } from 'wagmi';
 import { REAL_ESTATE_DAPP, REAL_ESTATE_DAPP_ADDRESS } from '@/config/contract.config';
@@ -64,75 +63,62 @@ export function Home() {
   const fractionalCount = allAssets?.filter(a => a.isFractionalized).length || 0;
 
   return (
-    <div style={{
-      backgroundColor: '#121317',
-      minHeight: '100vh',
-      padding: '20px 20px'
-    }}>
-
+    <div className="bg-[#121317] min-h-screen p-5">
       <div className="min-h-screen bg-[#121317]">
-            <section className="px-6 py-20 md:py-20 max-w-7xl mx-auto">
-              <div className="max-w-4xl mx-auto text-center space-y-8">
-                <h1 className="text-5xl md:text-6xl font-bold text-[#E1E2E2] leading-tight">
-                  Invest in Real Estate Through Blockchain Technology
-                </h1>
-                
-                <p className="text-xl md:text-2xl text-[#6D6041] leading-relaxed">
-                  Real estate has long been one of the most reliable wealth-building assets. Now, blockchain technology makes it accessible to everyone through tokenization—allowing you to own fractional shares of premium properties without the traditional barriers.
-                </p>
-      
-                <div className="grid md:grid-cols-3 gap-8 pt-8">
-                  <div className="space-y-3">
-                    <div className="w-12 h-12 bg-[#CAAB5B]/10 rounded-lg flex items-center justify-center mx-auto">
-                      <TrendingUp className="w-6 h-6 text-[#CAAB5B]" />
-                    </div>
-                    <h3 className="text-xl font-semibold text-[#E1E2E2]">Passive Income</h3>
-                    <p className="text-[#6D6041]">Earn monthly rental income automatically distributed to your wallet</p>
-                  </div>
-      
-                  <div className="space-y-3">
-                    <div className="w-12 h-12 bg-[#CAAB5B]/10 rounded-lg flex items-center justify-center mx-auto">
-                      <DollarSign className="w-6 h-6 text-[#CAAB5B]" />
-                    </div>
-                    <h3 className="text-xl font-semibold text-[#E1E2E2]">Fractional Ownership</h3>
-                    <p className="text-[#6D6041]">Start investing with any amount—no need for large capital</p>
-                  </div>
-      
-                  <div className="space-y-3">
-                    <div className="w-12 h-12 bg-[#CAAB5B]/10 rounded-lg flex items-center justify-center mx-auto">
-                      <MapPin className="w-6 h-6 text-[#CAAB5B]" />
-                    </div>
-                    <h3 className="text-xl font-semibold text-[#E1E2E2]">Global Access</h3>
-                    <p className="text-[#6D6041]">Invest in properties anywhere in the world, instantly</p>
-                  </div>
+        <section className="px-6 py-20 md:py-20 max-w-7xl mx-auto">
+          <div className="max-w-4xl mx-auto text-center space-y-8">
+            <h1 className="text-5xl md:text-6xl font-bold text-[#E1E2E2] leading-tight">
+              Invest in Real Estate Through Blockchain Technology
+            </h1>
+            
+            <p className="text-xl md:text-2xl text-[#6D6041] leading-relaxed">
+              Real estate has long been one of the most reliable wealth-building assets. Now, blockchain technology makes it accessible to everyone through tokenization—allowing you to own fractional shares of premium properties without the traditional barriers.
+            </p>
+  
+            <div className="grid md:grid-cols-3 gap-8 pt-8">
+              <div className="space-y-3">
+                <div className="w-12 h-12 bg-[#CAAB5B]/10 rounded-lg flex items-center justify-center mx-auto">
+                  <TrendingUp className="w-6 h-6 text-[#CAAB5B]" />
                 </div>
-      
-                
+                <h3 className="text-xl font-semibold text-[#E1E2E2]">Passive Income</h3>
+                <p className="text-[#6D6041]">Earn monthly rental income automatically distributed to your wallet</p>
               </div>
-            </section>
-      
-            <section className="px-6 py-14 bg-[#111216] border-t border-[#2C2C2C]">
-  <div className="max-w-7xl mx-auto text-center">
-    <div className="mb-12">
-      <h2 className="text-4xl md:text-5xl font-bold text-[#E1E2E2] mb-4">
-        Available <span className="text-[#CAAB5B]">Properties</span>
-      </h2>
-      <p className="text-xl text-[#6D6041] max-w-2xl mx-auto">
-        Browse tokenized real estate opportunities and start building your portfolio
-      </p>
-    </div>
-  </div>
- </section>
+  
+              <div className="space-y-3">
+                <div className="w-12 h-12 bg-[#CAAB5B]/10 rounded-lg flex items-center justify-center mx-auto">
+                  <DollarSign className="w-6 h-6 text-[#CAAB5B]" />
+                </div>
+                <h3 className="text-xl font-semibold text-[#E1E2E2]">Fractional Ownership</h3>
+                <p className="text-[#6D6041]">Start investing with any amount—no need for large capital</p>
+              </div>
+  
+              <div className="space-y-3">
+                <div className="w-12 h-12 bg-[#CAAB5B]/10 rounded-lg flex items-center justify-center mx-auto">
+                  <MapPin className="w-6 h-6 text-[#CAAB5B]" />
+                </div>
+                <h3 className="text-xl font-semibold text-[#E1E2E2]">Global Access</h3>
+                <p className="text-[#6D6041]">Invest in properties anywhere in the world, instantly</p>
+              </div>
+            </div>
           </div>
-      <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
-        
-        
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-          gap: '16px',
-          marginBottom: '32px'
-        }}>
+        </section>
+  
+        <section className="px-6 py-14 bg-[#111216] border-t border-[#2C2C2C]">
+          <div className="max-w-7xl mx-auto text-center">
+            <div className="mb-12">
+              <h2 className="text-4xl md:text-5xl font-bold text-[#E1E2E2] mb-4">
+                Available <span className="text-[#CAAB5B]">Properties</span>
+              </h2>
+              <p className="text-xl text-[#6D6041] max-w-2xl mx-auto">
+                Browse tokenized real estate opportunities and start building your portfolio
+              </p>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <div className="max-w-[1400px] mx-auto">
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-4 mb-8">
           <StatCard
             icon="🏠"
             label="Total Properties"
@@ -159,51 +145,20 @@ export function Home() {
           />
         </div>
 
-        <div style={{
-          backgroundColor: '#111216',
-          border: '1px solid #2C2C2C',
-          borderRadius: '12px',
-          padding: '24px',
-          marginBottom: '40px'
-        }}>
-          <div style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: '20px',
-            alignItems: 'center'
-          }}>
-            <div style={{
-              color: '#CAAB5B',
-              fontSize: '14px',
-              fontWeight: 'bold',
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px'
-            }}>
+        <div className="bg-[#111216] border border-[#2C2C2C] rounded-xl p-6 mb-10">
+          <div className="flex flex-wrap gap-5 items-center">
+            <div className="text-[#CAAB5B] text-sm font-bold uppercase tracking-wider">
               Filters:
             </div>
 
-            <div style={{ flex: '0 0 auto' }}>
-              <label style={{
-                color: '#6D6041',
-                fontSize: '12px',
-                display: 'block',
-                marginBottom: '6px'
-              }}>
+            <div className="flex-none">
+              <label className="text-[#6D6041] text-xs block mb-1.5">
                 Property Type
               </label>
               <select
                 value={filterType}
                 onChange={(e) => setFilterType(e.target.value)}
-                style={{
-                  padding: '10px 16px',
-                  backgroundColor: '#121317',
-                  border: '1px solid #2C2C2C',
-                  borderRadius: '8px',
-                  color: '#E1E2E2',
-                  fontSize: '14px',
-                  cursor: 'pointer',
-                  minWidth: '150px'
-                }}
+                className="py-2.5 px-4 bg-[#121317] border border-[#2C2C2C] rounded-lg text-[#E1E2E2] text-sm cursor-pointer min-w-[150px]"
               >
                 <option value="all">All Properties</option>
                 <option value="whole">Whole Only</option>
@@ -211,28 +166,14 @@ export function Home() {
               </select>
             </div>
 
-            <div style={{ flex: '0 0 auto' }}>
-              <label style={{
-                color: '#6D6041',
-                fontSize: '12px',
-                display: 'block',
-                marginBottom: '6px'
-              }}>
+            <div className="flex-none">
+              <label className="text-[#6D6041] text-xs block mb-1.5">
                 Sort By
               </label>
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                style={{
-                  padding: '10px 16px',
-                  backgroundColor: '#121317',
-                  border: '1px solid #2C2C2C',
-                  borderRadius: '8px',
-                  color: '#E1E2E2',
-                  fontSize: '14px',
-                  cursor: 'pointer',
-                  minWidth: '150px'
-                }}
+                className="py-2.5 px-4 bg-[#121317] border border-[#2C2C2C] rounded-lg text-[#E1E2E2] text-sm cursor-pointer min-w-[150px]"
               >
                 <option value="newest">Newest First</option>
                 <option value="price-low">Price: Low to High</option>
@@ -240,76 +181,33 @@ export function Home() {
               </select>
             </div>
 
-            <div style={{ flex: '0 0 auto' }}>
-              <label style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                color: '#E1E2E2',
-                fontSize: '14px',
-                cursor: 'pointer',
-                marginTop: '20px'
-              }}>
+            <div className="flex-none">
+              <label className="flex items-center gap-2 text-[#E1E2E2] text-sm cursor-pointer mt-5">
                 <input
                   type="checkbox"
                   checked={filterVerified}
                   onChange={(e) => setFilterVerified(e.target.checked)}
-                  style={{
-                    cursor: 'pointer',
-                    width: '18px',
-                    height: '18px',
-                    accentColor: '#4CAF50'
-                  }}
+                  className="cursor-pointer w-[18px] h-[18px] accent-[#4CAF50]"
                 />
                 <span>Verified Only</span>
               </label>
             </div>
 
-            <div style={{
-              marginLeft: 'auto',
-              color: '#6D6041',
-              fontSize: '14px',
-              fontWeight: 'bold'
-            }}>
+            <div className="ml-auto text-[#6D6041] text-sm font-bold">
               {availableProperties} {availableProperties === 1 ? 'property' : 'properties'} found
             </div>
           </div>
 
           {(filterType !== 'all' || filterVerified) && (
-            <div style={{
-              marginTop: '16px',
-              paddingTop: '16px',
-              borderTop: '1px solid #2C2C2C',
-              display: 'flex',
-              gap: '8px',
-              flexWrap: 'wrap',
-              alignItems: 'center'
-            }}>
-              <span style={{ color: '#6D6041', fontSize: '12px' }}>Active filters:</span>
+            <div className="mt-4 pt-4 border-t border-[#2C2C2C] flex gap-2 flex-wrap items-center">
+              <span className="text-[#6D6041] text-xs">Active filters:</span>
               
               {filterType !== 'all' && (
-                <span style={{
-                  backgroundColor: '#CAAB5B20',
-                  border: '1px solid #CAAB5B',
-                  color: '#CAAB5B',
-                  padding: '4px 10px',
-                  borderRadius: '6px',
-                  fontSize: '12px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px'
-                }}>
+                <span className="bg-[#CAAB5B20] border border-[#CAAB5B] text-[#CAAB5B] py-1 px-2.5 rounded-md text-xs flex items-center gap-1.5">
                   {filterType === 'whole' ? 'Whole Properties' : 'Fractional Properties'}
                   <button
                     onClick={() => setFilterType('all')}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: '#CAAB5B',
-                      cursor: 'pointer',
-                      padding: 0,
-                      fontSize: '14px'
-                    }}
+                    className="bg-transparent border-0 text-[#CAAB5B] cursor-pointer p-0 text-sm"
                   >
                     ×
                   </button>
@@ -317,28 +215,11 @@ export function Home() {
               )}
 
               {filterVerified && (
-                <span style={{
-                  backgroundColor: '#4CAF5020',
-                  border: '1px solid #4CAF50',
-                  color: '#4CAF50',
-                  padding: '4px 10px',
-                  borderRadius: '6px',
-                  fontSize: '12px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px'
-                }}>
+                <span className="bg-[#4CAF5020] border border-[#4CAF50] text-[#4CAF50] py-1 px-2.5 rounded-md text-xs flex items-center gap-1.5">
                   Verified Only
                   <button
                     onClick={() => setFilterVerified(false)}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: '#4CAF50',
-                      cursor: 'pointer',
-                      padding: 0,
-                      fontSize: '14px'
-                    }}
+                    className="bg-transparent border-0 text-[#4CAF50] cursor-pointer p-0 text-sm"
                   >
                     ×
                   </button>
@@ -350,16 +231,7 @@ export function Home() {
                   setFilterType('all');
                   setFilterVerified(false);
                 }}
-                style={{
-                  backgroundColor: 'transparent',
-                  border: '1px solid #6D6041',
-                  color: '#6D6041',
-                  padding: '4px 10px',
-                  borderRadius: '6px',
-                  fontSize: '12px',
-                  cursor: 'pointer',
-                  marginLeft: '8px'
-                }}
+                className="bg-transparent border border-[#6D6041] text-[#6D6041] py-1 px-2.5 rounded-md text-xs cursor-pointer ml-2"
               >
                 Clear All
               </button>
@@ -368,42 +240,26 @@ export function Home() {
         </div>
 
         {isLoading && (
-          <div style={{
-            textAlign: 'center',
-            padding: '80px 20px',
-            color: '#CAAB5B',
-            fontSize: '18px'
-          }}>
-            <div style={{ fontSize: '48px', marginBottom: '16px' }}>🔄</div>
+          <div className="text-center py-20 px-5 text-[#CAAB5B] text-lg">
+            <div className="text-5xl mb-4">🔄</div>
             Loading properties...
           </div>
         )}
 
         {error && (
-          <div style={{
-            backgroundColor: '#f4433620',
-            border: '1px solid #f44336',
-            borderRadius: '12px',
-            padding: '24px',
-            textAlign: 'center',
-            color: '#f44336'
-          }}>
-            <div style={{ fontSize: '48px', marginBottom: '16px' }}>⚠️</div>
-            <div style={{ fontSize: '18px', marginBottom: '8px' }}>
+          <div className="bg-[#f4433620] border border-[#f44336] rounded-xl p-6 text-center text-[#f44336]">
+            <div className="text-5xl mb-4">⚠️</div>
+            <div className="text-lg mb-2">
               Error Loading Properties
             </div>
-            <div style={{ fontSize: '14px', color: '#E1E2E2' }}>
+            <div className="text-sm text-[#E1E2E2]">
               {error.message}
             </div>
           </div>
         )}
 
         {!isLoading && !error && filteredAndSortedAssets.length > 0 && (
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
-            gap: '24px'
-          }}>
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-6">
             {filteredAndSortedAssets.map(asset => (
               <PropertyCard 
                 key={asset.tokenId.toString()} 
@@ -414,19 +270,12 @@ export function Home() {
         )}
 
         {!isLoading && !error && filteredAndSortedAssets.length === 0 && (
-          <div style={{
-            textAlign: 'center',
-            padding: '80px 20px',
-            backgroundColor: '#111216',
-            border: '1px solid #2C2C2C',
-            borderRadius: '12px',
-            color: '#6D6041'
-          }}>
-            <div style={{ fontSize: '64px', marginBottom: '16px' }}>🏠</div>
-            <div style={{ fontSize: '24px', marginBottom: '8px', color: '#E1E2E2' }}>
+          <div className="text-center py-20 px-5 bg-[#111216] border border-[#2C2C2C] rounded-xl text-[#6D6041]">
+            <div className="text-6xl mb-4">🏠</div>
+            <div className="text-2xl mb-2 text-[#E1E2E2]">
               No Properties Found
             </div>
-            <div style={{ fontSize: '16px', marginBottom: '24px' }}>
+            <div className="text-base mb-6">
               {allAssets && allAssets.length > 0 
                 ? 'Try adjusting your filters to see more properties'
                 : 'Be the first to list a property on the marketplace'}
@@ -437,16 +286,7 @@ export function Home() {
                   setFilterType('all');
                   setFilterVerified(false);
                 }}
-                style={{
-                  padding: '12px 24px',
-                  backgroundColor: '#CAAB5B',
-                  color: '#121317',
-                  border: 'none',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  fontWeight: 'bold',
-                  cursor: 'pointer'
-                }}
+                className="py-3 px-6 bg-[#CAAB5B] text-[#121317] border-0 rounded-lg text-sm font-bold cursor-pointer"
               >
                 Clear Filters
               </button>
@@ -460,37 +300,15 @@ export function Home() {
 
 function StatCard({ icon, label, value, color }) {
   return (
-    <div style={{
-      backgroundColor: '#111216',
-      border: '1px solid #2C2C2C',
-      borderRadius: '12px',
-      padding: '20px',
-      display: 'flex',
-      alignItems: 'center',
-      gap: '16px'
-    }}>
-      <div style={{
-        fontSize: '32px',
-        lineHeight: '1'
-      }}>
+    <div className="bg-[#111216] border border-[#2C2C2C] rounded-xl p-5 flex items-center gap-4">
+      <div className="text-[32px] leading-none">
         {icon}
       </div>
       <div>
-        <div style={{
-          color: '#6D6041',
-          fontSize: '12px',
-          marginBottom: '4px',
-          textTransform: 'uppercase',
-          letterSpacing: '0.5px'
-        }}>
+        <div className="text-[#6D6041] text-xs mb-1 uppercase tracking-wider">
           {label}
         </div>
-        <div style={{
-          color: color,
-          fontSize: '24px',
-          fontWeight: 'bold',
-          lineHeight: '1'
-        }}>
+        <div className="text-2xl font-bold leading-none" style={{ color }}>
           {value}
         </div>
       </div>

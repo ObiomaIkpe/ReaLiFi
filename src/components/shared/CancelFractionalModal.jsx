@@ -15,93 +15,37 @@ export function CancelFractionalModal({
   const maxTokens = portfolioItem?.fractionalTokensOwned || BigInt(0);
 
   return (
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.8)',
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      zIndex: 1000,
-      padding: '20px'
-    }}>
-      <div style={{
-        backgroundColor: '#111216',
-        border: '1px solid #2C2C2C',
-        borderRadius: '16px',
-        padding: '32px',
-        maxWidth: '500px',
-        width: '100%'
-      }}>
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '24px'
-        }}>
-          <h2 style={{
-            color: '#f44336',
-            fontSize: '24px',
-            fontWeight: 'bold',
-            margin: 0
-          }}>
+    <div className="fixed inset-0 bg-black/80 flex justify-center items-center z-[1000] p-5">
+      <div className="bg-[#111216] border border-[#2C2C2C] rounded-2xl p-8 max-w-[500px] w-full">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-red-500 text-2xl font-bold m-0">
             Cancel Fractional Investment
           </h2>
           <button
             onClick={onClose}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: '#6D6041',
-              fontSize: '24px',
-              cursor: 'pointer',
-              padding: '0',
-              width: '32px',
-              height: '32px'
-            }}
+            className="bg-transparent border-0 text-[#6D6041] text-2xl cursor-pointer p-0 w-8 h-8 hover:text-red-500 transition-colors"
           >
             ×
           </button>
         </div>
 
-        <div style={{
-          backgroundColor: '#121317',
-          border: '1px solid #2C2C2C',
-          borderRadius: '12px',
-          padding: '20px',
-          marginBottom: '24px'
-        }}>
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            marginBottom: '12px'
-          }}>
-            <span style={{ color: '#6D6041', fontSize: '14px' }}>Token ID</span>
-            <span style={{ color: '#E1E2E2', fontSize: '14px', fontWeight: 'bold' }}>
+        <div className="bg-[#121317] border border-[#2C2C2C] rounded-xl p-5 mb-6">
+          <div className="flex justify-between mb-3">
+            <span className="text-[#6D6041] text-sm">Token ID</span>
+            <span className="text-[#E1E2E2] text-sm font-bold">
               #{asset.tokenId.toString()}
             </span>
           </div>
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-          }}>
-            <span style={{ color: '#6D6041', fontSize: '14px' }}>Tokens Owned</span>
-            <span style={{ color: '#4CAF50', fontSize: '14px', fontWeight: 'bold' }}>
+          <div className="flex justify-between">
+            <span className="text-[#6D6041] text-sm">Tokens Owned</span>
+            <span className="text-emerald-500 text-sm font-bold">
               {maxTokens.toString()}
             </span>
           </div>
         </div>
 
-        <div style={{ marginBottom: '24px' }}>
-          <label style={{
-            color: '#6D6041',
-            fontSize: '14px',
-            display: 'block',
-            marginBottom: '8px'
-          }}>
+        <div className="mb-6">
+          <label className="text-[#6D6041] text-sm block mb-2">
             Number of Tokens to Cancel
           </label>
           <input
@@ -111,74 +55,32 @@ export function CancelFractionalModal({
             min="1"
             max={maxTokens.toString()}
             placeholder="Enter amount"
-            style={{
-              width: '100%',
-              padding: '12px',
-              backgroundColor: '#121317',
-              border: '1px solid #2C2C2C',
-              borderRadius: '8px',
-              color: '#E1E2E2',
-              fontSize: '14px',
-            }}
+            className="w-full p-3 bg-[#121317] border border-[#2C2C2C] rounded-lg text-[#E1E2E2] text-sm placeholder:text-[#6D6041] focus:outline-none focus:border-[#CAAB5B] transition-colors"
           />
-          <div style={{
-            color: '#6D6041',
-            fontSize: '12px',
-            marginTop: '8px'
-          }}>
+          <div className="text-[#6D6041] text-xs mt-2">
             Maximum: {maxTokens.toString()} tokens
           </div>
         </div>
 
-        <div style={{
-          backgroundColor: '#f4433620',
-          border: '1px solid #f44336',
-          borderRadius: '12px',
-          padding: '16px',
-          marginBottom: '24px',
-          fontSize: '14px',
-          color: '#E1E2E2'
-        }}>
-          <div style={{ fontWeight: 'bold', marginBottom: '8px', color: '#f44336' }}>
+        <div className="bg-red-500/10 border border-red-500 rounded-xl p-4 mb-6 text-sm text-[#E1E2E2]">
+          <div className="font-bold mb-2 text-red-500">
             ⚠️ Warning
           </div>
           Canceling will burn your tokens and refund your investment. A penalty may apply.
         </div>
 
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: '12px'
-        }}>
+        <div className="grid grid-cols-2 gap-3">
           <button
             onClick={onClose}
             disabled={isPending || isConfirming}
-            style={{
-              padding: '14px',
-              backgroundColor: '#2C2C2C',
-              color: '#E1E2E2',
-              border: 'none',
-              borderRadius: '12px',
-              fontSize: '14px',
-              fontWeight: 'bold',
-              cursor: isPending || isConfirming ? 'not-allowed' : 'pointer',
-            }}
+            className="py-3.5 px-4 bg-[#2C2C2C] text-[#E1E2E2] border-0 rounded-xl text-sm font-bold cursor-pointer hover:bg-[#3C3C3C] transition-colors disabled:cursor-not-allowed disabled:opacity-50"
           >
             Go Back
           </button>
           <button
             onClick={onCancel}
             disabled={isPending || isConfirming || !cancelAmount || Number(cancelAmount) <= 0 || BigInt(cancelAmount) > maxTokens}
-            style={{
-              padding: '14px',
-              backgroundColor: isPending || isConfirming || !cancelAmount || Number(cancelAmount) <= 0 || BigInt(cancelAmount) > maxTokens ? '#2C2C2C' : '#f44336',
-              color: isPending || isConfirming || !cancelAmount || Number(cancelAmount) <= 0 || BigInt(cancelAmount) > maxTokens ? '#6D6041' : '#fff',
-              border: 'none',
-              borderRadius: '12px',
-              fontSize: '14px',
-              fontWeight: 'bold',
-              cursor: isPending || isConfirming || !cancelAmount || Number(cancelAmount) <= 0 || BigInt(cancelAmount) > maxTokens ? 'not-allowed' : 'pointer',
-            }}
+            className="py-3.5 px-4 bg-red-500 text-white border-0 rounded-xl text-sm font-bold cursor-pointer hover:bg-red-600 transition-colors disabled:bg-[#2C2C2C] disabled:text-[#6D6041] disabled:cursor-not-allowed"
           >
             {isPending ? 'Confirm in wallet...' : isConfirming ? 'Canceling...' : 'Cancel Investment'}
           </button>

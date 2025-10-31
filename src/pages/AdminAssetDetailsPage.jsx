@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 
 export const AdminAssetDetailsPage = () => {
-  const { propertyId } = useParams();
+  const { tokenId: propertyId } = useParams();
   const navigate = useNavigate();
   const { address, isConnected } = useAccount();
   const [notification, setNotification] = useState(null);
@@ -244,7 +244,7 @@ export const AdminAssetDetailsPage = () => {
           <h2 className="text-2xl font-bold text-[#E1E2E2] mb-2">Asset Not Found</h2>
           <p className="text-[#6D6041] mb-6">The requested asset does not exist</p>
           <button
-            onClick={() => navigate('/admin')}
+            onClick={() => navigate('/admin-dashboard')}
             className="px-6 py-3 bg-[#CAAB5B] text-[#121317] rounded-lg hover:bg-[#CAAB5B]/90 transition-colors font-medium"
           >
             Back to Dashboard

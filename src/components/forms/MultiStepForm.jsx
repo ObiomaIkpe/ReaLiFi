@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { useDropzone } from "react-dropzone";
-import { Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Loader2, AlertCircle, CheckCircle2, ShieldCheck } from "lucide-react";
 import { createAsset } from "@/utils/createAsset";
 import { REAL_ESTATE_DAPP_ADDRESS, REAL_ESTATE_DAPP } from "@/config/contract.config";
 import { useReadContract, useWriteContract, useWaitForTransactionReceipt, useAccount } from "wagmi";
@@ -226,15 +226,17 @@ export default function MultiStepForm() {
   // Show wallet connection prompt
   if (!isConnected) {
     return (
-      <div className="flex justify-center items-center min-h-screen bg-gray-50 px-4">
-        <Card className="w-full max-w-md shadow-xl">
+      <div className="flex justify-center items-center min-h-screen bg-[#121317] px-4">
+        <Card className="w-full max-w-md shadow-[0_4px_15px_rgba(0,0,0,0.3)] border-0 rounded-2xl bg-[#111216]">
           <CardContent className="p-8 text-center">
-            <AlertCircle className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold mb-2">Wallet Not Connected</h2>
-            <p className="text-gray-600 mb-6">
+            <div className="w-20 h-20 mx-auto mb-6 rounded-full flex items-center justify-center bg-[#CAAB5B]/10">
+              <AlertCircle className="w-10 h-10 text-[#CAAB5B]" />
+            </div>
+            <h2 className="text-2xl font-bold mb-3 text-[#E1E2E2]">Wallet Not Connected</h2>
+            <p className="mb-6 text-[#6D6041]">
               Please connect your wallet to access the property tokenization portal.
             </p>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-[#6D6041]">
               Use the "Connect Wallet" button in the navigation bar.
             </p>
           </CardContent>
@@ -246,10 +248,10 @@ export default function MultiStepForm() {
   // Show loading while checking seller status
   if (checkingStatus) {
     return (
-      <div className="flex justify-center items-center min-h-screen bg-gray-50">
+      <div className="flex justify-center items-center min-h-screen bg-[#121317]">
         <div className="text-center">
-          <Loader2 className="w-12 h-12 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600">Checking seller status...</p>
+          <Loader2 className="w-12 h-12 animate-spin text-[#CAAB5B] mx-auto mb-4" />
+          <p className="text-[#6D6041]">Checking seller status...</p>
         </div>
       </div>
     );
@@ -258,32 +260,34 @@ export default function MultiStepForm() {
   // Show seller registration if not registered
   if (!isSeller) {
     return (
-      <div className="flex justify-center items-center min-h-screen bg-gray-50 px-4">
-        <Card className="w-full max-w-2xl shadow-xl">
-          <div className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white p-6 rounded-t-2xl">
+      <div className="flex justify-center items-center min-h-screen bg-[#121317] px-4">
+        <Card className="w-full max-w-2xl shadow-[0_4px_15px_rgba(0,0,0,0.3)] border-0 rounded-2xl overflow-hidden bg-[#111216]">
+          <div className="text-white p-6 bg-gradient-to-br from-[#CAAB5B] to-[#9A8245]">
             <h1 className="text-2xl font-bold">Seller Registration Required</h1>
           </div>
           <CardContent className="p-8">
             <div className="text-center">
-              <AlertCircle className="w-20 h-20 text-yellow-500 mx-auto mb-6" />
-              <h2 className="text-2xl font-bold mb-4">Register as a Seller</h2>
-              <p className="text-gray-600 mb-6 text-lg">
+              <div className="w-24 h-24 mx-auto mb-6 rounded-full flex items-center justify-center bg-[#CAAB5B]/10">
+                <ShieldCheck className="w-12 h-12 text-[#CAAB5B]" />
+              </div>
+              <h2 className="text-2xl font-bold mb-4 text-[#E1E2E2]">Register as a Seller</h2>
+              <p className="mb-6 text-lg text-[#6D6041]">
                 You need to register as a seller before you can create and list real estate assets on our platform.
               </p>
               
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6 text-left">
-                <h3 className="font-semibold text-blue-900 mb-3">What you'll get:</h3>
-                <ul className="space-y-2 text-blue-800">
-                  <li className="flex items-start gap-2">
-                    <CheckCircle2 className="w-5 h-5 mt-0.5 flex-shrink-0" />
+              <div className="rounded-2xl p-6 mb-6 text-left border bg-[#CAAB5B]/5 border-[#2C2C2C]">
+                <h3 className="font-semibold mb-3 text-[#CAAB5B]">What you'll get:</h3>
+                <ul className="space-y-3 text-[#E1E2E2]">
+                  <li className="flex items-start gap-3">
+                    <CheckCircle2 className="w-5 h-5 mt-0.5 flex-shrink-0 text-emerald-500" />
                     <span>Ability to tokenize and list your real estate properties</span>
                   </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle2 className="w-5 h-5 mt-0.5 flex-shrink-0" />
+                  <li className="flex items-start gap-3">
+                    <CheckCircle2 className="w-5 h-5 mt-0.5 flex-shrink-0 text-emerald-500" />
                     <span>Access to a global marketplace of investors</span>
                   </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle2 className="w-5 h-5 mt-0.5 flex-shrink-0" />
+                  <li className="flex items-start gap-3">
+                    <CheckCircle2 className="w-5 h-5 mt-0.5 flex-shrink-0 text-emerald-500" />
                     <span>Secure blockchain-verified transactions</span>
                   </li>
                 </ul>
@@ -292,7 +296,7 @@ export default function MultiStepForm() {
               <Button
                 onClick={handleRegisterSeller}
                 disabled={isRegisterPending || isRegisterConfirming}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-6 text-lg"
+                className="px-8 py-6 text-lg font-semibold text-black transition-all rounded-2xl hover:opacity-90 disabled:opacity-50 bg-[#CAAB5B]"
                 size="lg"
               >
                 {isRegisterPending || isRegisterConfirming ? (
@@ -306,7 +310,7 @@ export default function MultiStepForm() {
               </Button>
 
               {(isRegisterPending || isRegisterConfirming) && (
-                <p className="text-sm text-gray-500 mt-4">
+                <p className="text-sm mt-4 text-[#6D6041]">
                   Please confirm the transaction in your wallet
                 </p>
               )}
@@ -319,42 +323,42 @@ export default function MultiStepForm() {
 
   // Show the main form if registered
   return (
-    <div className="flex justify-center items-center min-h-screen bg-gray-50 px-4 py-10">
-      <Card className="w-full max-w-3xl shadow-xl border-gray-200 rounded-2xl">
-        <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6 rounded-t-2xl">
+    <div className="flex justify-center items-center min-h-screen bg-[#121317] px-4 py-10">
+      <Card className="w-full max-w-3xl shadow-[0_4px_15px_rgba(0,0,0,0.3)] border-0 rounded-2xl overflow-hidden bg-[#111216]">
+        <div className="text-white p-6 bg-gradient-to-br from-[#CAAB5B] to-[#9A8245]">
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold">Real Estate Tokenization Portal</h1>
-            <div className="flex items-center gap-2 bg-white/20 px-3 py-1 rounded-full">
-              <CheckCircle2 className="w-4 h-4" />
-              <span className="text-sm">Verified Seller</span>
+            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20">
+              <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+              <span className="text-sm text-emerald-500">Verified Seller</span>
             </div>
           </div>
         </div>
         <CardContent className="p-8">
           <div className="relative mb-8">
-            <div className="w-full bg-gray-200 h-2 rounded-full">
+            <div className="w-full h-2 rounded-full bg-[#2C2C2C]">
               <div
-                className="h-2 bg-blue-600 rounded-full transition-all duration-500"
+                className="h-2 rounded-full transition-all duration-500 bg-gradient-to-r from-[#CAAB5B] to-emerald-500"
                 style={{ width: `${(step / totalSteps) * 100}%` }}
               ></div>
             </div>
-            <p className="text-sm text-gray-500 text-center mt-2">
+            <p className="text-sm text-center mt-2 text-[#6D6041]">
               Step {step} of {totalSteps}
             </p>
           </div>
 
           {uploadStatus && (
-            <div className={`mb-4 p-4 rounded-lg ${
+            <div className={`mb-4 p-4 rounded-2xl border ${
               uploadStatus.includes("Error") 
-                ? "bg-red-100 text-red-700" 
+                ? "bg-red-500/10 border-red-500 text-red-500" 
                 : uploadStatus.includes("successful")
-                ? "bg-green-100 text-green-700"
-                : "bg-blue-100 text-blue-700"
+                ? "bg-emerald-500/10 border-emerald-500 text-emerald-500"
+                : "bg-[#CAAB5B]/10 border-[#CAAB5B] text-[#CAAB5B]"
             }`}>
               {uploadStatus}
               {metadataUri && (
                 <div className="mt-2 text-sm">
-                  <a href={metadataUri} target="_blank" rel="noopener noreferrer" className="underline">
+                  <a href={metadataUri} target="_blank" rel="noopener noreferrer" className="underline hover:opacity-80">
                     View on IPFS →
                   </a>
                 </div>
@@ -374,11 +378,27 @@ export default function MultiStepForm() {
                   transition={{ duration: 0.3 }}
                   className="grid gap-4"
                 >
-                  <h2 className="text-xl font-semibold">🏠 Property Details</h2>
-                  <Input placeholder="Property Title" {...register("propertyTitle")} />
-                  <Input placeholder="Property Type" {...register("propertyType")} />
-                  <Input placeholder="City, State" {...register("cityState")} />
-                  <Textarea placeholder="Description" {...register("description")} />
+                  <h2 className="text-xl font-semibold mb-2 text-[#E1E2E2]">🏠 Property Details</h2>
+                  <Input 
+                    placeholder="Property Title" 
+                    {...register("propertyTitle")} 
+                    className="border rounded-2xl bg-[#121317] border-[#2C2C2C] text-[#E1E2E2] placeholder:text-[#6D6041]"
+                  />
+                  <Input 
+                    placeholder="Property Type" 
+                    {...register("propertyType")} 
+                    className="border rounded-2xl bg-[#121317] border-[#2C2C2C] text-[#E1E2E2] placeholder:text-[#6D6041]"
+                  />
+                  <Input 
+                    placeholder="City, State" 
+                    {...register("cityState")} 
+                    className="border rounded-2xl bg-[#121317] border-[#2C2C2C] text-[#E1E2E2] placeholder:text-[#6D6041]"
+                  />
+                  <Textarea 
+                    placeholder="Description" 
+                    {...register("description")} 
+                    className="border rounded-2xl bg-[#121317] border-[#2C2C2C] text-[#E1E2E2] placeholder:text-[#6D6041]"
+                  />
                 </motion.div>
               )}
 
@@ -392,10 +412,23 @@ export default function MultiStepForm() {
                   transition={{ duration: 0.3 }}
                   className="grid gap-4"
                 >
-                  <h2 className="text-xl font-semibold">👤 Owner Information</h2>
-                  <Input placeholder="Full Name" {...register("fullName")} />
-                  <Input placeholder="Email Address" type="email" {...register("email")} />
-                  <Input placeholder="Phone Number" {...register("phone")} />
+                  <h2 className="text-xl font-semibold mb-2 text-[#E1E2E2]">👤 Owner Information</h2>
+                  <Input 
+                    placeholder="Full Name" 
+                    {...register("fullName")} 
+                    className="border rounded-2xl bg-[#121317] border-[#2C2C2C] text-[#E1E2E2] placeholder:text-[#6D6041]"
+                  />
+                  <Input 
+                    placeholder="Email Address" 
+                    type="email" 
+                    {...register("email")} 
+                    className="border rounded-2xl bg-[#121317] border-[#2C2C2C] text-[#E1E2E2] placeholder:text-[#6D6041]"
+                  />
+                  <Input 
+                    placeholder="Phone Number" 
+                    {...register("phone")} 
+                    className="border rounded-2xl bg-[#121317] border-[#2C2C2C] text-[#E1E2E2] placeholder:text-[#6D6041]"
+                  />
                 </motion.div>
               )}
 
@@ -409,11 +442,31 @@ export default function MultiStepForm() {
                   transition={{ duration: 0.3 }}
                   className="grid gap-4"
                 >
-                  <h2 className="text-xl font-semibold">💰 Financial Details</h2>
-                  <Input type="number" placeholder="Purchase Price" {...register("purchasePrice")} />
-                  <Input type="number" placeholder="Tokenization Value" {...register("tokenizationValue")} />
-                  <Input type="number" placeholder="Monthly Revenue" {...register("monthlyRevenue")} />
-                  <Input type="number" placeholder="Monthly Expenses" {...register("monthlyExpenses")} />
+                  <h2 className="text-xl font-semibold mb-2 text-[#E1E2E2]">💰 Financial Details</h2>
+                  <Input 
+                    type="number" 
+                    placeholder="Purchase Price" 
+                    {...register("purchasePrice")} 
+                    className="border rounded-2xl bg-[#121317] border-[#2C2C2C] text-[#E1E2E2] placeholder:text-[#6D6041]"
+                  />
+                  <Input 
+                    type="number" 
+                    placeholder="Tokenization Value" 
+                    {...register("tokenizationValue")} 
+                    className="border rounded-2xl bg-[#121317] border-[#2C2C2C] text-[#E1E2E2] placeholder:text-[#6D6041]"
+                  />
+                  <Input 
+                    type="number" 
+                    placeholder="Monthly Revenue" 
+                    {...register("monthlyRevenue")} 
+                    className="border rounded-2xl bg-[#121317] border-[#2C2C2C] text-[#E1E2E2] placeholder:text-[#6D6041]"
+                  />
+                  <Input 
+                    type="number" 
+                    placeholder="Monthly Expenses" 
+                    {...register("monthlyExpenses")} 
+                    className="border rounded-2xl bg-[#121317] border-[#2C2C2C] text-[#E1E2E2] placeholder:text-[#6D6041]"
+                  />
                 </motion.div>
               )}
 
@@ -427,7 +480,7 @@ export default function MultiStepForm() {
                   transition={{ duration: 0.3 }}
                   className="space-y-8"
                 >
-                  <h2 className="text-2xl font-semibold">📸 Media Uploads</h2>
+                  <h2 className="text-2xl font-semibold text-[#E1E2E2]">📸 Media Uploads</h2>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
                     <Controller
@@ -444,12 +497,12 @@ export default function MultiStepForm() {
                         return (
                           <motion.div
                             {...getRootProps()}
-                            className="border-2 border-dashed rounded-2xl p-6 text-center bg-gray-50 hover:bg-gray-100 cursor-pointer transition-colors"
+                            className="border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition-all border-[#2C2C2C] bg-[#121317] hover:border-[#CAAB5B] hover:bg-[#CAAB5B]/5"
                             whileHover={{ scale: 1.02 }}
                           >
                             <input {...getInputProps()} />
-                            <p className="text-gray-600">
-                              Drag or click to upload <b>images</b> (max 5)
+                            <p className="text-[#6D6041]">
+                              Drag or click to upload <b className="text-[#CAAB5B]">images</b> (max 5)
                             </p>
 
                             {value.length > 0 && (
@@ -459,7 +512,7 @@ export default function MultiStepForm() {
                                     key={i}
                                     src={URL.createObjectURL(file)}
                                     alt="upload preview"
-                                    className="w-24 h-24 object-cover rounded-lg border shadow-sm"
+                                    className="w-24 h-24 object-cover rounded-lg shadow-[0_4px_15px_rgba(0,0,0,0.3)] border-2 border-[#2C2C2C]"
                                     initial={{ opacity: 0, scale: 0.8 }}
                                     animate={{ opacity: 1, scale: 1 }}
                                   />
@@ -485,16 +538,16 @@ export default function MultiStepForm() {
                         return (
                           <motion.div
                             {...getRootProps()}
-                            className="border-2 border-dashed rounded-2xl p-6 text-center bg-gray-50 hover:bg-gray-100 cursor-pointer transition-colors"
+                            className="border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition-all border-[#2C2C2C] bg-[#121317] hover:border-[#CAAB5B] hover:bg-[#CAAB5B]/5"
                             whileHover={{ scale: 1.02 }}
                           >
                             <input {...getInputProps()} />
-                            <p className="text-gray-600">
-                              Upload <b>documents</b> (PDF only, max 5)
+                            <p className="text-[#6D6041]">
+                              Upload <b className="text-[#CAAB5B]">documents</b> (PDF only, max 5)
                             </p>
 
                             {value.length > 0 && (
-                              <ul className="mt-4 text-sm text-gray-700 text-left space-y-2">
+                              <ul className="mt-4 text-sm text-left space-y-2 text-[#E1E2E2]">
                                 {value.map((file, i) => (
                                   <motion.li
                                     key={i}
@@ -525,24 +578,26 @@ export default function MultiStepForm() {
                   transition={{ duration: 0.3 }}
                   className="space-y-4"
                 >
-                  <h2 className="text-xl font-semibold">⚖️ Legal & Compliance</h2>
-                  <div className="flex items-center gap-2">
-                    <Checkbox {...register("acceptTerms")} /> <span>I accept terms & conditions</span>
+                  <h2 className="text-xl font-semibold mb-4 text-[#E1E2E2]">⚖️ Legal & Compliance</h2>
+                  <div className="flex items-center gap-3 p-4 rounded-2xl border bg-[#121317] border-[#2C2C2C]">
+                    <Checkbox {...register("acceptTerms")} /> 
+                    <span className="text-[#E1E2E2]">I accept terms & conditions</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Checkbox {...register("confirmOwnership")} /> <span>I confirm property ownership</span>
+                  <div className="flex items-center gap-3 p-4 rounded-2xl border bg-[#121317] border-[#2C2C2C]">
+                    <Checkbox {...register("confirmOwnership")} /> 
+                    <span className="text-[#E1E2E2]">I confirm property ownership</span>
                   </div>
                 </motion.div>
               )}
             </AnimatePresence>
 
-            <div className="mt-8 pt-4 border-t flex justify-between items-center">
+            <div className="mt-8 pt-4 flex justify-between items-center border-t border-[#2C2C2C]">
               {step > 1 && (
                 <Button
                   type="button"
                   onClick={prevStep}
-                  variant="outline"
                   disabled={uploading}
+                  className="border rounded-2xl px-6 py-2 transition-all hover:opacity-80 bg-transparent border-[#2C2C2C] text-[#E1E2E2]"
                 >
                   ← Back
                 </Button>
@@ -552,7 +607,7 @@ export default function MultiStepForm() {
                 <Button
                   type="button"
                   onClick={nextStep}
-                  className="ml-auto bg-blue-600 hover:bg-blue-700 text-white"
+                  className="ml-auto px-6 py-2 rounded-2xl font-semibold text-black transition-all hover:opacity-90 bg-[#CAAB5B]"
                 >
                   Next →
                 </Button>
@@ -563,7 +618,7 @@ export default function MultiStepForm() {
                   type="button"
                   onClick={handleSubmit(onSubmit)}
                   disabled={uploading}
-                  className="ml-auto bg-green-600 hover:bg-green-700 text-white"
+                  className="ml-auto px-6 py-2 rounded-2xl font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50 bg-emerald-500"
                 >
                   {uploading ? (
                     <>

@@ -7,10 +7,10 @@ const Navbar = () => {
 
   const links = [
     { name: "Home", path: "/" },
-    { name: "My Portfolio", path: "/portfolio" },
+    { name: "Buyer Dashboard", path: "/buyer-dashboard" },
     { name: "Upload asset", path: "/upload" },
-    { name: "Admin", path: "/admin" },
-    { name: "seller dashboard", path: "seller-dashboard"}
+    { name: "Admin", path: "/admin-dashboard" },
+    { name: "Seller Dashboard", path: "seller-dashboard"}
   ];
 
   return (

@@ -48,71 +48,27 @@ export function PropertyCard({ asset }) {
   return (
     <div
       onClick={handleClick}
-      style={{
-        backgroundColor: '#111216',
-        border: '1px solid #2C2C2C',
-        borderRadius: '12px',
-        overflow: 'hidden',
-        cursor: 'pointer',
-        transition: 'transform 0.2s ease, box-shadow 0.2s ease',
-        display: 'flex',
-        flexDirection: 'column',
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.transform = 'translateY(-4px)';
-        e.currentTarget.style.boxShadow = '0 8px 16px rgba(202, 171, 91, 0.2)';
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.transform = 'translateY(0)';
-        e.currentTarget.style.boxShadow = 'none';
-      }}
+      className="bg-[#111216] border border-[#2C2C2C] rounded-xl overflow-hidden cursor-pointer transition-all duration-200 ease-in-out flex flex-col hover:-translate-y-1 hover:shadow-[0_8px_16px_rgba(202,171,91,0.2)]"
     >
       {/* Thumbnail Image Section */}
-      <div style={{
-        position: 'relative',
-        width: '100%',
-        height: '200px',
-        backgroundColor: '#121317',
-        overflow: 'hidden',
-      }}>
+      <div className="relative w-full h-[200px] bg-[#121317] overflow-hidden">
         {loading ? (
           // Loading state
-          <div style={{
-            width: '100%',
-            height: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: '#6D6041',
-            fontSize: '14px',
-          }}>
+          <div className="w-full h-full flex items-center justify-center text-[#6D6041] text-sm">
             Loading...
           </div>
         ) : metadataError || !thumbnail ? (
           // Error or no image state
-          <div style={{
-            width: '100%',
-            height: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexDirection: 'column',
-            gap: '8px',
-            color: '#6D6041',
-          }}>
-            <div style={{ fontSize: '48px' }}>🏠</div>
-            <div style={{ fontSize: '12px' }}>No image available</div>
+          <div className="w-full h-full flex items-center justify-center flex-col gap-2 text-[#6D6041]">
+            <div className="text-5xl">🏠</div>
+            <div className="text-xs">No image available</div>
           </div>
         ) : (
           // Image loaded successfully
           <img 
             src={thumbnail} 
             alt={`Property #${asset.tokenId}`}
-            style={{
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover',
-            }}
+            className="w-full h-full object-cover"
             onError={(e) => {
               // If image fails to load, show placeholder
               e.currentTarget.style.display = 'none';
@@ -123,99 +79,41 @@ export function PropertyCard({ asset }) {
 
         {/* Verification Badge (Overlay) */}
         {asset.verified && (
-          <div style={{
-            position: 'absolute',
-            top: '12px',
-            right: '12px',
-            backgroundColor: '#4CAF50',
-            color: '#fff',
-            padding: '6px 10px',
-            borderRadius: '6px',
-            fontSize: '11px',
-            fontWeight: 'bold',
-            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '4px',
-          }}>
+          <div className="absolute top-3 right-3 bg-emerald-500 text-white px-2.5 py-1.5 rounded-md text-[11px] font-bold shadow-[0_2px_8px_rgba(0,0,0,0.3)] flex items-center gap-1">
             ✓ Verified
           </div>
         )}
 
         {/* Fractional Badge (Overlay) */}
         {asset.isFractionalized && (
-          <div style={{
-            position: 'absolute',
-            top: '12px',
-            left: '12px',
-            backgroundColor: '#4CAF50',
-            color: '#fff',
-            padding: '6px 10px',
-            borderRadius: '6px',
-            fontSize: '11px',
-            fontWeight: 'bold',
-            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '4px',
-          }}>
+          <div className="absolute top-3 left-3 bg-emerald-500 text-white px-2.5 py-1.5 rounded-md text-[11px] font-bold shadow-[0_2px_8px_rgba(0,0,0,0.3)] flex items-center gap-1">
             🔹 Fractional
           </div>
         )}
       </div>
 
       {/* Card Content Section */}
-      <div style={{ padding: '20px' }}>
+      <div className="p-5">
         {/* Token ID Badge */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '16px',
-        }}>
-          <div style={{
-            backgroundColor: '#CAAB5B',
-            color: '#121317',
-            padding: '4px 10px',
-            borderRadius: '4px',
-            fontSize: '12px',
-            fontWeight: 'bold',
-          }}>
+        <div className="flex justify-between items-center mb-4">
+          <div className="bg-[#CAAB5B] text-[#121317] px-2.5 py-1 rounded text-xs font-bold">
             #{asset.tokenId.toString()}
           </div>
 
           {/* Property Type (if not fractionalized, already shown as overlay) */}
           {!asset.isFractionalized && (
-            <div style={{
-              backgroundColor: '#2C2C2C',
-              color: '#CAAB5B',
-              padding: '4px 10px',
-              borderRadius: '4px',
-              fontSize: '11px',
-              fontWeight: '500',
-            }}>
+            <div className="bg-[#2C2C2C] text-[#CAAB5B] px-2.5 py-1 rounded text-[11px] font-medium">
               🏠 Whole
             </div>
           )}
         </div>
 
         {/* Price Section */}
-        <div style={{ marginBottom: '16px' }}>
-          <div style={{
-            color: '#6D6041',
-            fontSize: '11px',
-            marginBottom: '4px',
-            textTransform: 'uppercase',
-            letterSpacing: '0.5px',
-          }}>
+        <div className="mb-4">
+          <div className="text-[#6D6041] text-[11px] mb-1 uppercase tracking-wide">
             {asset.isFractionalized ? 'From' : 'Price'}
           </div>
-          <div style={{
-            color: '#CAAB5B',
-            fontSize: '24px',
-            fontWeight: 'bold',
-            lineHeight: '1.2',
-          }}>
+          <div className="text-[#CAAB5B] text-2xl font-bold leading-tight">
             {asset.isFractionalized 
               ? formatUnits(asset.pricePerFractionalToken, 6)
               : formatUnits(asset.price, 6)} USDC
@@ -224,71 +122,38 @@ export function PropertyCard({ asset }) {
 
         {/* Fractional Info Section */}
         {asset.isFractionalized && (
-          <div style={{
-            backgroundColor: '#121317',
-            border: '1px solid #2C2C2C',
-            borderRadius: '6px',
-            padding: '10px',
-            marginBottom: '16px',
-          }}>
+          <div className="bg-[#121317] border border-[#2C2C2C] rounded-md p-2.5 mb-4">
             {/* Token Availability */}
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              fontSize: '11px',
-              color: '#E1E2E2',
-              marginBottom: '8px',
-            }}>
-              <span style={{ color: '#6D6041' }}>Available:</span>
-              <span style={{ fontWeight: 'bold', color: '#4CAF50' }}>
+            <div className="flex justify-between text-[11px] text-[#E1E2E2] mb-2">
+              <span className="text-[#6D6041]">Available:</span>
+              <span className="font-bold text-emerald-500">
                 {asset.remainingFractionalTokens?.toString()} / {asset.totalFractionalTokens?.toString()}
               </span>
             </div>
 
             {/* Progress Bar */}
-            <div style={{
-              backgroundColor: '#2C2C2C',
-              height: '4px',
-              borderRadius: '2px',
-              overflow: 'hidden',
-            }}>
-              <div style={{
-                backgroundColor: '#4CAF50',
-                height: '100%',
-                width: `${((Number(asset.totalFractionalTokens) - Number(asset.remainingFractionalTokens)) / Number(asset.totalFractionalTokens)) * 100}%`,
-                transition: 'width 0.3s ease',
-              }} />
+            <div className="bg-[#2C2C2C] h-1 rounded-sm overflow-hidden">
+              <div 
+                className="bg-emerald-500 h-full transition-all duration-300 ease-in-out"
+                style={{
+                  width: `${((Number(asset.totalFractionalTokens) - Number(asset.remainingFractionalTokens)) / Number(asset.totalFractionalTokens)) * 100}%`
+                }}
+              />
             </div>
 
             {/* Percentage Text */}
-            <div style={{
-              color: '#6D6041',
-              fontSize: '10px',
-              marginTop: '6px',
-              textAlign: 'right',
-            }}>
+            <div className="text-[#6D6041] text-[10px] mt-1.5 text-right">
               {((Number(asset.totalFractionalTokens) - Number(asset.remainingFractionalTokens)) / Number(asset.totalFractionalTokens) * 100).toFixed(1)}% sold
             </div>
           </div>
         )}
 
         {/* Seller Info (Optional) */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          paddingTop: '12px',
-          borderTop: '1px solid #2C2C2C',
-          marginBottom: '16px',
-        }}>
-          <div style={{ color: '#6D6041', fontSize: '11px' }}>
+        <div className="flex justify-between items-center pt-3 border-t border-[#2C2C2C] mb-4">
+          <div className="text-[#6D6041] text-[11px]">
             Seller
           </div>
-          <div style={{
-            color: '#E1E2E2',
-            fontSize: '11px',
-            fontFamily: 'monospace',
-          }}>
+          <div className="text-[#E1E2E2] text-[11px] font-mono">
             {asset.seller.slice(0, 6)}...{asset.seller.slice(-4)}
           </div>
         </div>
@@ -299,31 +164,10 @@ export function PropertyCard({ asset }) {
             e.stopPropagation(); // Prevent card click event
             handleClick();
           }}
-          style={{
-            width: '100%',
-            padding: '12px',
-            backgroundColor: '#4CAF50',
-            color: '#fff',
-            border: 'none',
-            borderRadius: '8px',
-            fontSize: '14px',
-            fontWeight: 'bold',
-            cursor: 'pointer',
-            transition: 'opacity 0.2s ease',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '8px',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.opacity = '0.9';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.opacity = '1';
-          }}
+          className="w-full py-3 bg-emerald-500 text-white border-0 rounded-lg text-sm font-bold cursor-pointer transition-opacity duration-200 flex items-center justify-center gap-2 hover:opacity-90"
         >
           View Details
-          <span style={{ fontSize: '16px' }}>→</span>
+          <span className="text-base">→</span>
         </button>
       </div>
     </div>
