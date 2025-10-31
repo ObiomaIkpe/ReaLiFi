@@ -32,8 +32,11 @@ export default function MultiStepForm() {
     register,
     control,
     handleSubmit,
+    trigger,
+    formState: { errors },
   } = useForm({
     defaultValues: { images: [], documents: [] },
+    mode: "onChange",
   });
 
   // Check if user is registered as seller
@@ -45,7 +48,32 @@ export default function MultiStepForm() {
     enabled: !!address,
   });
 
-  const nextStep = () => setStep((s) => Math.min(s + 1, totalSteps));
+  const nextStep = async () => {
+    let fieldsToValidate = [];
+    
+    // Define fields to validate for each step
+    switch(step) {
+      case 1:
+        fieldsToValidate = ["propertyTitle", "propertyType", "cityState", "description"];
+        break;
+      case 2:
+        fieldsToValidate = ["fullName", "email", "phone"];
+        break;
+      case 3:
+        fieldsToValidate = ["purchasePrice", "tokenizationValue", "monthlyRevenue", "monthlyExpenses"];
+        break;
+      default:
+        fieldsToValidate = [];
+    }
+
+    if (fieldsToValidate.length > 0) {
+      const isValid = await trigger(fieldsToValidate);
+      if (!isValid) return;
+    }
+
+    setStep((s) => Math.min(s + 1, totalSteps));
+  };
+
   const prevStep = () => setStep((s) => Math.max(s - 1, 1));
 
   // Handle seller registration
@@ -379,26 +407,74 @@ export default function MultiStepForm() {
                   className="grid gap-4"
                 >
                   <h2 className="text-xl font-semibold mb-2 text-[#E1E2E2]">🏠 Property Details</h2>
-                  <Input 
-                    placeholder="Property Title" 
-                    {...register("propertyTitle")} 
-                    className="border rounded-2xl bg-[#121317] border-[#2C2C2C] text-[#E1E2E2] placeholder:text-[#6D6041]"
-                  />
-                  <Input 
-                    placeholder="Property Type" 
-                    {...register("propertyType")} 
-                    className="border rounded-2xl bg-[#121317] border-[#2C2C2C] text-[#E1E2E2] placeholder:text-[#6D6041]"
-                  />
-                  <Input 
-                    placeholder="City, State" 
-                    {...register("cityState")} 
-                    className="border rounded-2xl bg-[#121317] border-[#2C2C2C] text-[#E1E2E2] placeholder:text-[#6D6041]"
-                  />
-                  <Textarea 
-                    placeholder="Description" 
-                    {...register("description")} 
-                    className="border rounded-2xl bg-[#121317] border-[#2C2C2C] text-[#E1E2E2] placeholder:text-[#6D6041]"
-                  />
+                  
+                  <div>
+                    <Input 
+                      placeholder="Property Title" 
+                      {...register("propertyTitle", {
+                        required: "Property title is required",
+                        minLength: {
+                          value: 3,
+                          message: "Title must be at least 3 characters"
+                        }
+                      })} 
+                      className="border rounded-2xl bg-[#121317] border-[#2C2C2C] text-[#E1E2E2] placeholder:text-[#6D6041]"
+                    />
+                    {errors.propertyTitle && (
+                      <span className="text-red-500 text-sm mt-1 block">
+                        {errors.propertyTitle.message}
+                      </span>
+                    )}
+                  </div>
+
+                  <div>
+                    <Input 
+                      placeholder="Property Type (e.g., Residential, Commercial)" 
+                      {...register("propertyType", {
+                        required: "Property type is required"
+                      })} 
+                      className="border rounded-2xl bg-[#121317] border-[#2C2C2C] text-[#E1E2E2] placeholder:text-[#6D6041]"
+                    />
+                    {errors.propertyType && (
+                      <span className="text-red-500 text-sm mt-1 block">
+                        {errors.propertyType.message}
+                      </span>
+                    )}
+                  </div>
+
+                  <div>
+                    <Input 
+                      placeholder="City, State" 
+                      {...register("cityState", {
+                        required: "Location is required"
+                      })} 
+                      className="border rounded-2xl bg-[#121317] border-[#2C2C2C] text-[#E1E2E2] placeholder:text-[#6D6041]"
+                    />
+                    {errors.cityState && (
+                      <span className="text-red-500 text-sm mt-1 block">
+                        {errors.cityState.message}
+                      </span>
+                    )}
+                  </div>
+
+                  <div>
+                    <Textarea 
+                      placeholder="Property Description" 
+                      {...register("description", {
+                        required: "Description is required",
+                        minLength: {
+                          value: 20,
+                          message: "Description must be at least 20 characters"
+                        }
+                      })} 
+                      className="border rounded-2xl bg-[#121317] border-[#2C2C2C] text-[#E1E2E2] placeholder:text-[#6D6041]"
+                    />
+                    {errors.description && (
+                      <span className="text-red-500 text-sm mt-1 block">
+                        {errors.description.message}
+                      </span>
+                    )}
+                  </div>
                 </motion.div>
               )}
 
@@ -413,22 +489,64 @@ export default function MultiStepForm() {
                   className="grid gap-4"
                 >
                   <h2 className="text-xl font-semibold mb-2 text-[#E1E2E2]">👤 Owner Information</h2>
-                  <Input 
-                    placeholder="Full Name" 
-                    {...register("fullName")} 
-                    className="border rounded-2xl bg-[#121317] border-[#2C2C2C] text-[#E1E2E2] placeholder:text-[#6D6041]"
-                  />
-                  <Input 
-                    placeholder="Email Address" 
-                    type="email" 
-                    {...register("email")} 
-                    className="border rounded-2xl bg-[#121317] border-[#2C2C2C] text-[#E1E2E2] placeholder:text-[#6D6041]"
-                  />
-                  <Input 
-                    placeholder="Phone Number" 
-                    {...register("phone")} 
-                    className="border rounded-2xl bg-[#121317] border-[#2C2C2C] text-[#E1E2E2] placeholder:text-[#6D6041]"
-                  />
+                  
+                  <div>
+                    <Input 
+                      placeholder="Full Name" 
+                      {...register("fullName", {
+                        required: "Full name is required",
+                        minLength: {
+                          value: 4,
+                          message: "Name must be at least 4 characters"
+                        }
+                      })} 
+                      className="border rounded-2xl bg-[#121317] border-[#2C2C2C] text-[#E1E2E2] placeholder:text-[#6D6041]"
+                    />
+                    {errors.fullName && (
+                      <span className="text-red-500 text-sm mt-1 block">
+                        {errors.fullName.message}
+                      </span>
+                    )}
+                  </div>
+
+                  <div>
+                    <Input 
+                      placeholder="Email Address" 
+                      type="email" 
+                      {...register("email", {
+                        required: "Email is required",
+                        pattern: {
+                          value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                          message: "Invalid email address"
+                        }
+                      })} 
+                      className="border rounded-2xl bg-[#121317] border-[#2C2C2C] text-[#E1E2E2] placeholder:text-[#6D6041]"
+                    />
+                    {errors.email && (
+                      <span className="text-red-500 text-sm mt-1 block">
+                        {errors.email.message}
+                      </span>
+                    )}
+                  </div>
+
+                  <div>
+                    <Input 
+                      placeholder="Phone Number" 
+                      {...register("phone", {
+                        required: "Phone number is required",
+                        pattern: {
+                          value: /^[+]?[(]?[0-9]{3}[)]?[-\s.]?[0-9]{3}[-\s.]?[0-9]{4,6}$/,
+                          message: "Invalid phone number"
+                        }
+                      })} 
+                      className="border rounded-2xl bg-[#121317] border-[#2C2C2C] text-[#E1E2E2] placeholder:text-[#6D6041]"
+                    />
+                    {errors.phone && (
+                      <span className="text-red-500 text-sm mt-1 block">
+                        {errors.phone.message}
+                      </span>
+                    )}
+                  </div>
                 </motion.div>
               )}
 
@@ -443,30 +561,86 @@ export default function MultiStepForm() {
                   className="grid gap-4"
                 >
                   <h2 className="text-xl font-semibold mb-2 text-[#E1E2E2]">💰 Financial Details</h2>
-                  <Input 
-                    type="number" 
-                    placeholder="Purchase Price" 
-                    {...register("purchasePrice")} 
-                    className="border rounded-2xl bg-[#121317] border-[#2C2C2C] text-[#E1E2E2] placeholder:text-[#6D6041]"
-                  />
-                  <Input 
-                    type="number" 
-                    placeholder="Tokenization Value" 
-                    {...register("tokenizationValue")} 
-                    className="border rounded-2xl bg-[#121317] border-[#2C2C2C] text-[#E1E2E2] placeholder:text-[#6D6041]"
-                  />
-                  <Input 
-                    type="number" 
-                    placeholder="Monthly Revenue" 
-                    {...register("monthlyRevenue")} 
-                    className="border rounded-2xl bg-[#121317] border-[#2C2C2C] text-[#E1E2E2] placeholder:text-[#6D6041]"
-                  />
-                  <Input 
-                    type="number" 
-                    placeholder="Monthly Expenses" 
-                    {...register("monthlyExpenses")} 
-                    className="border rounded-2xl bg-[#121317] border-[#2C2C2C] text-[#E1E2E2] placeholder:text-[#6D6041]"
-                  />
+                  
+                  <div>
+                    <Input 
+                      type="number" 
+                      placeholder="Purchase Price" 
+                      {...register("purchasePrice", {
+                        required: "Purchase price is required",
+                        min: {
+                          value: 1,
+                          message: "Price must be greater than 0"
+                        }
+                      })} 
+                      className="border rounded-2xl bg-[#121317] border-[#2C2C2C] text-[#E1E2E2] placeholder:text-[#6D6041]"
+                    />
+                    {errors.purchasePrice && (
+                      <span className="text-red-500 text-sm mt-1 block">
+                        {errors.purchasePrice.message}
+                      </span>
+                    )}
+                  </div>
+
+                  <div>
+                    <Input 
+                      type="number" 
+                      placeholder="Tokenization Value" 
+                      {...register("tokenizationValue", {
+                        required: "Tokenization value is required",
+                        min: {
+                          value: 1,
+                          message: "Value must be greater than 0"
+                        }
+                      })} 
+                      className="border rounded-2xl bg-[#121317] border-[#2C2C2C] text-[#E1E2E2] placeholder:text-[#6D6041]"
+                    />
+                    {errors.tokenizationValue && (
+                      <span className="text-red-500 text-sm mt-1 block">
+                        {errors.tokenizationValue.message}
+                      </span>
+                    )}
+                  </div>
+
+                  <div>
+                    <Input 
+                      type="number" 
+                      placeholder="Monthly Revenue" 
+                      {...register("monthlyRevenue", {
+                        required: "Monthly revenue is required",
+                        min: {
+                          value: 0,
+                          message: "Revenue cannot be negative"
+                        }
+                      })} 
+                      className="border rounded-2xl bg-[#121317] border-[#2C2C2C] text-[#E1E2E2] placeholder:text-[#6D6041]"
+                    />
+                    {errors.monthlyRevenue && (
+                      <span className="text-red-500 text-sm mt-1 block">
+                        {errors.monthlyRevenue.message}
+                      </span>
+                    )}
+                  </div>
+
+                  <div>
+                    <Input 
+                      type="number" 
+                      placeholder="Monthly Expenses" 
+                      {...register("monthlyExpenses", {
+                        required: "Monthly expenses is required",
+                        min: {
+                          value: 0,
+                          message: "Expenses cannot be negative"
+                        }
+                      })} 
+                      className="border rounded-2xl bg-[#121317] border-[#2C2C2C] text-[#E1E2E2] placeholder:text-[#6D6041]"
+                    />
+                    {errors.monthlyExpenses && (
+                      <span className="text-red-500 text-sm mt-1 block">
+                        {errors.monthlyExpenses.message}
+                      </span>
+                    )}
+                  </div>
                 </motion.div>
               )}
 
@@ -579,13 +753,37 @@ export default function MultiStepForm() {
                   className="space-y-4"
                 >
                   <h2 className="text-xl font-semibold mb-4 text-[#E1E2E2]">⚖️ Legal & Compliance</h2>
-                  <div className="flex items-center gap-3 p-4 rounded-2xl border bg-[#121317] border-[#2C2C2C]">
-                    <Checkbox {...register("acceptTerms")} /> 
-                    <span className="text-[#E1E2E2]">I accept terms & conditions</span>
+                  
+                  <div>
+                    <div className="flex items-center gap-3 p-4 rounded-2xl border bg-[#121317] border-[#2C2C2C]">
+                      <Checkbox 
+                        {...register("acceptTerms", {
+                          required: "You must accept terms & conditions"
+                        })} 
+                      /> 
+                      <span className="text-[#E1E2E2]">I accept terms & conditions</span>
+                    </div>
+                    {errors.acceptTerms && (
+                      <span className="text-red-500 text-sm mt-1 block">
+                        {errors.acceptTerms.message}
+                      </span>
+                    )}
                   </div>
-                  <div className="flex items-center gap-3 p-4 rounded-2xl border bg-[#121317] border-[#2C2C2C]">
-                    <Checkbox {...register("confirmOwnership")} /> 
-                    <span className="text-[#E1E2E2]">I confirm property ownership</span>
+
+                  <div>
+                    <div className="flex items-center gap-3 p-4 rounded-2xl border bg-[#121317] border-[#2C2C2C]">
+                      <Checkbox 
+                        {...register("confirmOwnership", {
+                          required: "You must confirm property ownership"
+                        })} 
+                      /> 
+                      <span className="text-[#E1E2E2]">I confirm property ownership</span>
+                    </div>
+                    {errors.confirmOwnership && (
+                      <span className="text-red-500 text-sm mt-1 block">
+                        {errors.confirmOwnership.message}
+                      </span>
+                    )}
                   </div>
                 </motion.div>
               )}

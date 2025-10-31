@@ -5,6 +5,7 @@ import { MOCK_USDC, MOCK_USDC_ADDRESS, REAL_ESTATE_DAPP, REAL_ESTATE_DAPP_ADDRES
 import { PurchaseModal } from './shared/PurchaseModal';
 import { CancelFractionalModal } from './shared/CancelFractionalModal';
 
+//dashboard for buyers to see the assets they own.
 export function BuyerDashboard() {
   const { address, isConnected } = useAccount();
   const [selectedTab, setSelectedTab] = useState('browse');

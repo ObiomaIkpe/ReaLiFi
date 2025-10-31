@@ -1,3 +1,6 @@
+
+//modal for purchasing asset  (whole or fractions)
+
 import { formatUnits } from 'viem';
 
 export function PurchaseModal({

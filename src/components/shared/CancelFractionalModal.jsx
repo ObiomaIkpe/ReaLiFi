@@ -1,3 +1,5 @@
+// this modal pops up when an asset owner tries to cancel fractions of the assets he owns.
+
 export function CancelFractionalModal({
   asset,
   cancelAmount,

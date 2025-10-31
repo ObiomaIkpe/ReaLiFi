@@ -3,6 +3,8 @@ import toast from 'react-hot-toast';
 import { formatEther } from 'viem';
 import { REAL_ESTATE_DAPP_ADDRESS, REAL_ESTATE_DAPP } from '../config/contract.config';
 
+//listen for events emitted by the smart contract.
+
 function EventNotifications() {
   const { address } = useAccount();
 

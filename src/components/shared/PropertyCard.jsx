@@ -42,7 +42,6 @@ export function PropertyCard({ asset }) {
     navigate(`/property/${asset.tokenId}`);
   };
 
-  // Don't render if asset is invalid
   if (!asset) return null;
 
   return (
@@ -64,13 +63,11 @@ export function PropertyCard({ asset }) {
             <div className="text-xs">No image available</div>
           </div>
         ) : (
-          // Image loaded successfully
           <img 
             src={thumbnail} 
             alt={`Property #${asset.tokenId}`}
             className="w-full h-full object-cover"
             onError={(e) => {
-              // If image fails to load, show placeholder
               e.currentTarget.style.display = 'none';
               setMetadataError(true);
             }}
@@ -148,7 +145,7 @@ export function PropertyCard({ asset }) {
           </div>
         )}
 
-        {/* Seller Info (Optional) */}
+        {/* Seller Info */}
         <div className="flex justify-between items-center pt-3 border-t border-[#2C2C2C] mb-4">
           <div className="text-[#6D6041] text-[11px]">
             Seller
