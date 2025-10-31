@@ -14,7 +14,7 @@ ReaLiFi is a decentralized application (DApp) that removes traditional barriers 
 
 - **Live Demo**: [https://rea-li-394c5c0se-obiomaikpes-projects.vercel.app/](https://rea-li-394c5c0se-obiomaikpes-projects.vercel.app/)
 - **Video Demo**: [Coming Soon]
-- **Pitch Deck**: [Coming Soon]
+- **Pitch Deck**: [Link](https://docs.google.com/presentation/d/17Zp93M5mPCKn7qqG2BFFI2gdh7XJOAE8/edit?usp=drivesdk&ouid=110133559665817110690&rtpof=true&sd=true)
 - **Repository**: [github.com/ObiomaIkpe/ReaLiFi](https://github.com/ObiomaIkpe/ReaLiFi)
 
 ---
