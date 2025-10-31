@@ -20,7 +20,7 @@ export default function MultiStepForm() {
   const [metadataUri, setMetadataUri] = useState("");
   const totalSteps = 5;
 
-  const BACKEND_URL = "http://localhost:3000";
+  const BACKEND_URL = "https://realifi.onrender.com";
 
   const { address, isConnected } = useAccount();
   const { writeContract, data: registerHash, isPending: isRegisterPending } = useWriteContract();
