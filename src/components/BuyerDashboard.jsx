@@ -95,7 +95,7 @@ export function BuyerDashboard() {
     asset => asset.currentBuyer &&
     asset.currentBuyer.toLowerCase() === address?.toLowerCase() &&
     asset.isCanceled
-  ) || [];
+  ).slice(3) || [];
 
   const totalInvestment = completedFullPurchases.reduce(
     (sum, asset) => sum + BigInt(asset.price.toString()),
@@ -450,7 +450,7 @@ export function BuyerDashboard() {
             emptyMessage="No Properties Available"
             emptySubtext="Check back later for new listings"
           >
-            {wholeAssets.map((asset) => (
+            {wholeAssets.slice(3).map((asset) => (
               <AssetCard
                 key={asset.tokenId.toString()}
                 asset={asset}
