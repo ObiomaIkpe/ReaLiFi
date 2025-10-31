@@ -5,7 +5,6 @@
 
 @layer base {
   body {
-    @apply bg-main text-text-primary font-sans !important;
     @apply bg-gradient-to-b from-[#0d0e10] to-[#121317] text-text-primary font-sans !important;
   }
 
@@ -44,11 +43,22 @@
   }
 
   nav {
-  @apply backdrop-blur-md bg-section/90; /* translucent glass feel */
+    @apply backdrop-blur-md bg-section/90; /* translucent glass feel */
+  }
+
+  a {
+    @apply font-medium;
+  }
+} /* This closing brace was missing */
+
+/* Chrome, Safari, Edge, Opera */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 
-a {
-  @apply font-medium;
-}
-
+/* Firefox */
+input[type="number"] {
+  -moz-appearance: textfield;
 }
