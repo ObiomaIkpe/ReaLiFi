@@ -13,7 +13,7 @@
 - **Live Demo**: https://rea-li-394c5c0se-obiomaikpes-projects.vercel.app/
 - **Pitch Deck**: https://docs.google.com/presentation/d/17Zp93M5mPCKn7qqG2BFFI2gdh7XJOAE8/edit?usp=drivesdk&ouid=110133559665817110690&rtpof=true&sd=true
 - **GitHub Repository**: https://github.com/ObiomaIkpe/ReaLiFi
-- **Twitter/X**: https://x.com/realifiRWA
+- **Twitter/X**: https://x.com/realifiRwa
 - **Video Demo**: [Coming Soon]
 
 ---
