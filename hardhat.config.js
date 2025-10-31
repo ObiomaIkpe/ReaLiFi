@@ -13,12 +13,6 @@ require("@nomicfoundation/hardhat-toolbox");
       },
     },
     networks: {
-      // Lisk Testnet (Sepolia)
-      'lisk-sepolia': {
-        url: "https://rpc.sepolia-api.lisk.com",
-        accounts: [process.env.WALLET_KEY], // Your private key stored in .env
-        gasPrice: 1000000000, // 1 Gwei gas price
-      },
       testnet: {
       type: "http",
       url: process.env.RPC_URL,
