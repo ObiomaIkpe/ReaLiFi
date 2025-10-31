@@ -388,46 +388,17 @@ Compiled 15 Solidity files successfully
 Create a `.env` file in the root directory:
 
 ```env
-# Network Configuration
-HEDERA_TESTNET_ACCOUNT_ID=your_account_id
-HEDERA_TESTNET_PRIVATE_KEY=your_private_key
-HEDERA_MAINNET_ACCOUNT_ID=your_account_id
-HEDERA_MAINNET_PRIVATE_KEY=your_private_key
+ WALLET_KEY=
+# private key exported from MetaMask
+OPERATOR_KEY= 
 
-# Contract Addresses (after deployment)
-REALIFI_CONTRACT_ADDRESS=0x...
-FRACTIONAL_TOKEN_ADDRESS=0x...
-USDC_TOKEN_ADDRESS=0x...
+# new testnet account ID
+OPERATOR_ID= 
 
-# API Keys
-HASHSCAN_API_KEY=your_api_key
+# Hedera testnet RPC endpoint
+RPC_URL=
 ```
-
-### Hardhat Configuration
-
-Update `hardhat.config.js` for Hedera networks:
-
-```javascript
-require("@nomicfoundation/hardhat-toolbox");
-require("dotenv").config();
-
-module.exports = {
-  solidity: "0.8.28",
-  networks: {
-    testnet: {
-      url: "https://testnet.hashio.io/api",
-      accounts: [process.env.HEDERA_TESTNET_PRIVATE_KEY],
-      chainId: 296
-    },
-    mainnet: {
-      url: "https://mainnet.hashio.io/api",
-      accounts: [process.env.HEDERA_MAINNET_PRIVATE_KEY],
-      chainId: 295
-    }
-  }
-};
-```
-
+ 
 ## Testing
 
 ### Run All Tests
@@ -495,11 +466,10 @@ npx hardhat run scripts/deploy.js --network localhost
 npx hardhat ignition deploy ignition/modules/ReaLiFi.js --network testnet
 ```
 
-### 3. Mainnet Deployment
+### 3. Verify contract using sourcify
 
 ```bash
-# Deploy to Hedera mainnet
-npx hardhat run scripts/deploy.js --network mainnet
+npx hardhat verify --network testnet <contract address> 
 ```
 
 ### Post-Deployment Checklist
@@ -764,7 +734,7 @@ We welcome contributions! Please follow these guidelines:
 
 ## Contact
 
-**Author**: Therock Ani
+**Author**: Tech Scorpion
 
 - **GitHub**: [@techscorpion1](https://github.com/techscorpion1)
 - **Email**: techscorpion4@gmail.com
