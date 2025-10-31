@@ -216,7 +216,7 @@ DoraHacks: @shalomani-prop | Email: shalomanj@gmail.com
 DoraHacks: @youngtee-prop | Hedera Certified Developer  
 Email: anthonyikpegodspower@gmail.com
 
-**Patrick Pius (Tech Scorpion)** - Smart Contract Engineer  
+**Patrick Akpan (Tech Scorpion)** - Smart Contract Engineer  
 DoraHacks: @techscorpio-prop | Hedera Certified Developer  
 Email: techscorpion4@gmail.com
 
