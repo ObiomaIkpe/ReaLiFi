@@ -262,7 +262,7 @@ export default function MultiStepForm() {
             </div>
             <h2 className="text-2xl font-bold mb-3 text-[#E1E2E2]">Wallet Not Connected</h2>
             <p className="mb-6 text-[#6D6041]">
-              Please connect your wallet to access the property tokenization portal.
+              Please connect your wallet to access the property upload portal.
             </p>
             <p className="text-sm text-[#6D6041]">
               Use the "Connect Wallet" button in the navigation bar.
