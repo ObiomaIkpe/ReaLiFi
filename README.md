@@ -39,7 +39,7 @@ The REALiFI backend performs a single, critical function:
 
 - **Node.js** ≥ 18  
 - A **Pinata** account with API credentials  
-- (Optional) The [REALiFI Frontend](https://github.com/your-username/realifi-frontend) running locally or deployed
+- (Optional) The [REALiFI Frontend](https://github.com/ObiomaIkpe/realifi-frontend) running locally or deployed
 
 ---
 
