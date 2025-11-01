@@ -25,7 +25,7 @@ This repository contains the **frontend** of the REALiFI platform — built with
 ## How It Works
 
 1. **Wallet Connection**  
-   Users connect their Hedera-compatible wallet through **RainbowKit** and **Wagmi**.
+   Users connect a Hedera-compatible wallet through **RainbowKit** and **Wagmi**.
 
 2. **Asset Creation**  
    - Users upload property details (metadata + image).  
