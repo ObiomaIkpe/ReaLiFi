@@ -1,4 +1,4 @@
-   # ReaLiFi
+# ReaLiFi
 
 **Democratizing Real Estate Investment on Hedera Hashgraph**
 
@@ -12,10 +12,9 @@ ReaLiFi is a decentralized application (DApp) that removes traditional barriers 
 
 ## 🔗 Quick Links
 
-- **Live Demo**: [https://rea-li-394c5c0se-obiomaikpes-projects.vercel.app/](https://rea-li-7wl0qn95i-obiomaikpes-projects.vercel.app/)
-- **Video Demo**: [https://youtu.be/zB0xV7QfQzs]
+- **Live Demo**: [https://rea-li-7wl0qn95i-obiomaikpes-projects.vercel.app/](https://rea-li-7wl0qn95i-obiomaikpes-projects.vercel.app/)
+- **Video Demo**: [https://youtu.be/zB0xV7QfQzs](https://youtu.be/zB0xV7QfQzs)
 - **Pitch Deck**: [Link](https://docs.google.com/presentation/d/17Zp93M5mPCKn7qqG2BFFI2gdh7XJOAE8/edit?usp=drivesdk&ouid=110133559665817110690&rtpof=true&sd=true)
-- **Repository**: [github.com/ObiomaIkpe/ReaLiFi](https://github.com/ObiomaIkpe/ReaLiFi)
 
 ---
 
@@ -144,6 +143,65 @@ Seller Registration → Property Listing → Multi-Admin Verification
 
 ---
 
+## 🌟 Why Hedera?
+
+ReaLiFi chose Hedera Hashgraph as our blockchain infrastructure for compelling reasons that directly benefit real estate tokenization:
+
+### **Performance & Economics**
+- **Lightning Speed**: 3-5 second transaction finality vs. Ethereum's 12-15 minutes
+  - Instant confirmation for fractional share purchases
+  - Real-time property marketplace operations
+  - Fast secondary market trading
+- **Micro-Transaction Costs**: ~$0.0001 per transaction vs. Ethereum's $2-50 gas fees
+  - Enables profitable $5 minimum investments
+  - Makes secondary marketplace trading economically viable
+  - Allows frequent dividend distributions without eating into investor returns
+
+### **Security & Reliability**
+- **ABFT Consensus**: Asynchronous Byzantine Fault Tolerant - the highest level of distributed security
+  - Essential for high-value real estate transactions
+  - Once confirmed, transactions are absolutely final
+- **99.999% Uptime**: Enterprise-grade network reliability
+  - No downtime for critical property transactions
+- **No MEV**: Fair transaction ordering protects users from front-running attacks
+  - Prevents manipulation in secondary market trading
+
+### **Sustainability & Governance**
+- **Carbon-Negative Network**: Offsets more carbon than it produces
+  - Aligns with ESG-conscious real estate investors
+  - Future-proof against environmental regulations
+- **Enterprise Governance**: Governed by global corporations (Google, IBM, Boeing, LG, etc.)
+  - Stable, predictable network evolution
+  - Institutional confidence for property tokenization
+  - Long-term sustainability
+
+### **Developer & Regulatory Advantages**
+- **Full EVM Compatibility**: Deploy Solidity smart contracts with zero modification
+  - Use battle-tested OpenZeppelin libraries
+  - Access entire Ethereum tooling ecosystem
+- **Regulatory Clarity**: Clear positioning for real-world asset tokenization
+  - Important for future compliance requirements
+  - Institutional investor confidence
+
+### **Why Not Other Chains?**
+
+| Factor | Hedera | Ethereum | Polygon | Solana |
+|--------|--------|----------|---------|--------|
+| **TX Finality** | 3-5 sec | 12-15 min | 2-3 sec | 0.4 sec |
+| **TX Cost** | $0.0001 | $2-50 | $0.01-0.1 | $0.001 |
+| **Security** | ABFT ✅ | Probabilistic | Probabilistic | Outages |
+| **Carbon** | Negative ✅ | Positive | Neutral | High |
+| **Governance** | Enterprise ✅ | Decentralized | Centralized | Foundation |
+| **Real Estate Fit** | ✅ Excellent | ❌ Too Expensive | ⚠️ Security | ⚠️ Stability |
+
+**For real estate tokenization specifically:**
+- High-value transactions require **maximum security** (ABFT consensus)
+- Fractional ownership needs **micro-transaction economics** (sub-cent fees)
+- Institutional investors need **enterprise governance** and ESG compliance
+- Global expansion requires **regulatory clarity** and stability
+
+---
+
 ## ✨ Core Features
 
 ### 🏠 Property Management
@@ -222,6 +280,31 @@ ReaLiFi implements dual-layer protection to safeguard both investors and the pla
 
 ---
 
+## 📁 Repository Structure
+
+```
+ReaLiFi/
+├── main (branch)           # This README and project documentation
+├── contract (branch)       # Solidity smart contracts
+│   ├── contracts/
+│   │   ├── ReaLiFi.sol
+│   │   └── RealifiFractionalToken.sol
+│   ├── hardhat.config.js
+│   └── test/
+├── backend (branch)        # NestJS backend API
+│   ├── src/
+│   │   ├── modules/
+│   │   ├── services/
+│   │   └── ipfs/
+│   └── package.json
+└── frontend (branch)       # React frontend
+    ├── src/
+    │   ├── components/
+    │   ├── pages/
+    │   └── utils/
+    └── package.json
+```
+
 Each component is developed in its own branch for clean separation of concerns. The `main` branch contains this comprehensive documentation.
 
 ---
@@ -293,7 +376,7 @@ While neither RainbowKit nor Wagmi natively support Hedera Hashgraph, we've succ
 - All standard Wagmi hooks work seamlessly with Hedera
 - Users get Hedera's speed with Ethereum's tooling ecosystem
 
- 
+---
 
 ## 🎯 Roadmap
 
@@ -376,12 +459,12 @@ Please open issues for bugs or feature requests.
 📧 techscorpion4@gmail.com  
 🎓 [Hedera Certification](https://drive.google.com/file/d/1vWeheLhUSVLQxB0OfumoaOt2THeIxIni/view?usp=drivesdk)
 
+**Product Strategist:** Chiwuba Ugochukwu Miracle  
+📧 ugochkwu.chiwuba.253865@unn.edu.ng
+
 **Social Media Manager:** Chinenye Kingsley  
 📧 chinenyedanyi@gmail.com  
 🎓 [Hedera Certification](https://drive.google.com/file/d/1n4QS2iQ_XOQPfz4dprmMJbyxePHjS6Mg/view?usp=drivesdk)
-
-**Product Strategist:** Chiwuba Ugochukwu Miracle  
-📧 ugochkwu.chiwuba.253865@unn.edu.ng
 
 ---
 
@@ -394,6 +477,6 @@ Please open issues for bugs or feature requests.
 
 ---
 
-**Built with ❤️ by [ReaLiFi](https://x.com/relifiRwa)**
+**Built with ❤️ by [ReaLiFi](https://x.com/realifiRWA)**
 
 *Making real estate investment accessible to everyone, one fraction at a time.*
