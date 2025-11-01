@@ -1,6 +1,6 @@
 #  REALiFI Backend — NestJS + IPFS Integration
 
-The **REALiFI Backend** powers the file and metadata management layer of the [REALiFI](https://github.com/your-username/realifi-frontend) platform — a blockchain-based real estate investment application.
+The **REALiFI Backend** powers the file and metadata management layer of the [REALiFI](https://github.com/ObiomaIkpe/realifi-frontend) platform — a blockchain-based real estate investment application.
 
 It is built with **NestJS** and serves as a lightweight bridge between the **frontend** and **IPFS (via Pinata)**, handling secure file uploads and returning accessible metadata URLs that can be stored on-chain.
 
@@ -47,7 +47,7 @@ The REALiFI backend performs a single, critical function:
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/realifi.git
+git clone https://github.com/ObiomaIkpe/realifi.git
 cd realifi
 
 # Switch to the backend branch
